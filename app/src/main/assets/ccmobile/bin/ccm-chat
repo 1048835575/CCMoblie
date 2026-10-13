@@ -1,0 +1,7 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# App 聊天界面调用：stdin 为 stream-json 格式的用户消息（可含图片）及权限/提问的 control_response，
+# stdout 逐行输出事件；需要用户确认或选择时输出 control_request（can_use_tool）。
+# 用法：CCM_CWD=<项目目录> CCM_MODEL=<模型> ccm-chat [--resume <session_id>]
+. "$HOME/.ccmobile/bin/ccm-env"
+exec "${CCM_RUN[@]}" -p --input-format stream-json --output-format stream-json --verbose \
+    --include-partial-messages --permission-prompt-tool stdio "${CCM_ARGS[@]}" "$@"

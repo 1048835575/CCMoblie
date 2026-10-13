@@ -58,11 +58,7 @@
             android:resizeableActivity="true"
             android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
             tools:targetApi="n">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!-- CCMobile：桌面入口改为 CcmHomeActivity，终端从首页菜单进入 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -229,6 +225,56 @@
         <meta-data
             android:name="com.sec.android.support.multiwindow"
             android:value="true" />
+
+        <!-- CCMobile -->
+        <activity
+            android:name="com.termux.ccm.CcmHomeActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden"
+            android:label="@string/application_name"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Ccm"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.termux.ccm.CcmConfigActivity"
+            android:exported="false"
+            android:label="设置"
+            android:theme="@style/Theme.Ccm" />
+
+        <activity
+            android:name="com.termux.ccm.CcmSetupActivity"
+            android:exported="false"
+            android:label="环境与连接"
+            android:theme="@style/Theme.Ccm" />
+
+        <activity
+            android:name="com.termux.ccm.CcmPairActivity"
+            android:exported="false"
+            android:label="连接手机"
+            android:theme="@style/Theme.Ccm" />
+
+        <receiver
+            android:name="com.termux.ccm.CcmAdb$PairReplyReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="com.termux.ccm.CcmIme"
+            android:exported="true"
+            android:label="CCMobile 自动输入"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/ccm_method" />
+        </service>
 
     </application>
 

@@ -1,0 +1,11 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# 最新版 Claude Code 运行于 musl，启动它时必须去掉 Termux 的 LD_PRELOAD（安卓库会让 musl 进程崩溃）。
+# 它执行的 shell 命令通过这个包装恢复 LD_PRELOAD，保证 #!/usr/bin/env 等脚本正常运行。
+# 文件名必须是 bash，Claude Code 按名字识别 shell 类型。
+[ -n "$CCM_TERMUX_PRELOAD" ] && export LD_PRELOAD="$CCM_TERMUX_PRELOAD"
+if [ -n "$CCM_TERMUX_LINKER_MODE" ]; then
+    export TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE="$CCM_TERMUX_LINKER_MODE"
+else
+    unset TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE
+fi
+exec /data/data/com.termux/files/usr/bin/bash "$@"

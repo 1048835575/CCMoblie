@@ -589,6 +589,38 @@ public final class TerminalView extends View {
         }
     }
 
+    /**
+     * 按页滚动（CCMobile 终端翻页按钮使用）。普通输出直接滚动历史；
+     * 全屏程序（备用缓冲区）发送 PgUp/PgDn；开启鼠标追踪的程序发送滚轮事件。
+     */
+    public void scrollPage(boolean up) {
+        if (mEmulator == null) return;
+        int page = Math.max(1, mEmulator.mRows - 2);
+        if (mEmulator.isMouseTrackingActive()) {
+            for (int i = 0; i < page / 3 + 1; i++) {
+                mEmulator.sendMouseEvent(up ? TerminalEmulator.MOUSE_WHEELUP_BUTTON : TerminalEmulator.MOUSE_WHEELDOWN_BUTTON,
+                    mEmulator.mColumns / 2 + 1, mEmulator.mRows / 2 + 1, true);
+            }
+        } else if (mEmulator.isAlternateBufferActive()) {
+            handleKeyCode(up ? KeyEvent.KEYCODE_PAGE_UP : KeyEvent.KEYCODE_PAGE_DOWN, 0);
+        } else {
+            int minTop = -mEmulator.getScreen().getActiveTranscriptRows();
+            setTopRow(Math.min(0, Math.max(minTop, mTopRow + (up ? -page : page))));
+            if (!awakenScrollBars()) invalidate();
+        }
+    }
+
+    /** 回到最新输出（底部）。 */
+    public void scrollToBottom() {
+        if (mEmulator == null) return;
+        if (mEmulator.isAlternateBufferActive()) {
+            handleKeyCode(KeyEvent.KEYCODE_MOVE_END, 0);
+            return;
+        }
+        setTopRow(0);
+        if (!awakenScrollBars()) invalidate();
+    }
+
     /** Overriding {@link View#onGenericMotionEvent(MotionEvent)}. */
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {

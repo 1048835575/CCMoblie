@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CCMobile 界面文字（英文，默认） -->
+<resources>
+    <string name="ccm_menu">Menu</string>
+    <string name="ccm_undo_last_turn">Undo last turn</string>
+    <string name="ccm_new_chat">New chat</string>
+    <string name="ccm_empty_title">What shall we build today?</string>
+    <string name="ccm_input_hint">Message Claude…</string>
+    <string name="ccm_add_image">Add image</string>
+    <string name="ccm_send">Send</string>
+    <string name="ccm_projects">Projects</string>
+    <string name="ccm_recent_chats">Recent chats</string>
+    <string name="ccm_settings">Settings</string>
+    <string name="ccm_connect">Connect</string>
+    <string name="ccm_terminal">Terminal</string>
+    <string name="ccm_page_up">Page up</string>
+    <string name="ccm_page_down">Page down</string>
+    <string name="ccm_scroll_bottom">Scroll to bottom</string>
+    <string name="ccm_scroll_toggle">Toggle page buttons</string>
+    <string name="ccm_config">CCMobile settings</string>
+</resources>

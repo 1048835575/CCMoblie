@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CCMobile 配色：中性冷灰 + 青绿强调色。深色见 values-night/ccm_colors.xml -->
+<resources>
+    <color name="ccm_bg">#F7F8F7</color>
+    <color name="ccm_surface">#FFFFFF</color>
+    <color name="ccm_surface_alt">#EDF1EF</color>
+    <color name="ccm_border">#DCE3E0</color>
+    <color name="ccm_text">#1B1F1E</color>
+    <color name="ccm_text_secondary">#5E6A66</color>
+    <color name="ccm_text_tertiary">#97A29E</color>
+    <color name="ccm_accent">#0F8B6F</color>
+    <color name="ccm_accent_soft">#260F8B6F</color>
+    <color name="ccm_on_accent">#FFFFFF</color>
+    <color name="ccm_user_bubble">#EDF1EF</color>
+    <color name="ccm_code_bg">#F0F3F1</color>
+    <color name="ccm_ok">#2E8B57</color>
+    <color name="ccm_warn">#B7791F</color>
+    <color name="ccm_error">#C4473A</color>
+    <color name="ccm_diff_add">#1F2E8B57</color>
+    <color name="ccm_diff_del">#1FC4473A</color>
+    <color name="ccm_scrim">#66000000</color>
+</resources>

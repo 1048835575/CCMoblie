@@ -1,0 +1,3 @@
+#!/data/data/com.termux/files/usr/bin/bash
+rm -f "$HOME/.ccmobile/.installed"
+exec bash "$HOME/.ccmobile/setup.sh"

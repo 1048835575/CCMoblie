@@ -23,15 +23,58 @@
             android:layout_above="@+id/terminal_toolbar_view_pager"
             android:layout_height="match_parent">
 
-            <com.termux.view.TerminalView
-                android:id="@+id/terminal_view"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:defaultFocusHighlightEnabled="false"
-                android:focusableInTouchMode="true"
-                android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
-                android:scrollbars="vertical"
-                tools:ignore="UnusedAttribute" />
+                android:layout_height="match_parent">
+
+                <com.termux.view.TerminalView
+                    android:id="@+id/terminal_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:defaultFocusHighlightEnabled="false"
+                    android:focusableInTouchMode="true"
+                    android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
+                    android:scrollbars="vertical"
+                    tools:ignore="UnusedAttribute" />
+
+                <!-- CCMobile：上下翻页切换按钮。点 ⇅ 展开 / 收起 ▲ ▼ ⤓ -->
+                <LinearLayout
+                    android:id="@+id/ccm_scroll_toggle_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="6dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/ccm_scroll_up"
+                        style="@style/CcmTerminalScrollButton"
+                        android:contentDescription="@string/ccm_page_up"
+                        android:text="▲"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/ccm_scroll_down"
+                        style="@style/CcmTerminalScrollButton"
+                        android:contentDescription="@string/ccm_page_down"
+                        android:text="▼"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/ccm_scroll_bottom"
+                        style="@style/CcmTerminalScrollButton"
+                        android:contentDescription="@string/ccm_scroll_bottom"
+                        android:text="⤓"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/ccm_scroll_toggle"
+                        style="@style/CcmTerminalScrollButton"
+                        android:contentDescription="@string/ccm_scroll_toggle"
+                        android:text="⇅" />
+                </LinearLayout>
+            </FrameLayout>
 
             <LinearLayout
                 android:id="@+id/left_drawer"
@@ -57,6 +100,14 @@
                         android:background="@null"
                         android:contentDescription="@string/action_open_settings"
                         app:tint="?attr/termuxActivityDrawerImageTint" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/ccm_config_button"
+                        style="?android:attr/buttonBarButtonStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:gravity="center_vertical|start"
+                        android:text="@string/ccm_config" />
                 </LinearLayout>
 
                 <ListView

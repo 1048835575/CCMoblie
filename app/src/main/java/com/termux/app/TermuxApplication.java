@@ -34,6 +34,9 @@ public class TermuxApplication extends Application {
 
         Logger.logDebug("Starting Application");
 
+        // CCMobile：确定界面语言（跟随系统或用户选择）
+        com.termux.ccm.CcmI18n.init(context);
+
         // Set TermuxBootstrap.TERMUX_APP_PACKAGE_MANAGER and TermuxBootstrap.TERMUX_APP_PACKAGE_VARIANT
         TermuxBootstrap.setTermuxPackageManagerAndVariant(BuildConfig.TERMUX_PACKAGE_VARIANT);
 

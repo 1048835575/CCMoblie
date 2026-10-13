@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ccm_bg">#1A1D1C</color>
+    <color name="ccm_surface">#232726</color>
+    <color name="ccm_surface_alt">#2C3130</color>
+    <color name="ccm_border">#38403D</color>
+    <color name="ccm_text">#EEF2F0</color>
+    <color name="ccm_text_secondary">#A8B3AF</color>
+    <color name="ccm_text_tertiary">#6E7975</color>
+    <color name="ccm_accent">#3DBE9C</color>
+    <color name="ccm_accent_soft">#333DBE9C</color>
+    <color name="ccm_on_accent">#0B1513</color>
+    <color name="ccm_user_bubble">#2C3130</color>
+    <color name="ccm_code_bg">#141716</color>
+    <color name="ccm_ok">#5CC28A</color>
+    <color name="ccm_warn">#E0A84A</color>
+    <color name="ccm_error">#E57366</color>
+    <color name="ccm_diff_add">#335CC28A</color>
+    <color name="ccm_diff_del">#33E57366</color>
+    <color name="ccm_scrim">#99000000</color>
+</resources>

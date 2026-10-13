@@ -37,3 +37,8 @@ local.properties
 .swp
 ehthumbs.db
 Thumbs.db
+
+# CCMobile：发布签名配置与密钥（不入库）
+keystore.properties
+*.jks
+!app/testkey_untrusted.jks

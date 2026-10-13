@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CCMobile 界面文字（中文） -->
+<resources>
+    <string name="ccm_menu">菜单</string>
+    <string name="ccm_undo_last_turn">撤销上一轮</string>
+    <string name="ccm_new_chat">新对话</string>
+    <string name="ccm_empty_title">今天想做点什么？</string>
+    <string name="ccm_input_hint">给 Claude 发消息…</string>
+    <string name="ccm_add_image">添加图片</string>
+    <string name="ccm_send">发送</string>
+    <string name="ccm_projects">项目</string>
+    <string name="ccm_recent_chats">最近对话</string>
+    <string name="ccm_settings">设置</string>
+    <string name="ccm_connect">连接</string>
+    <string name="ccm_terminal">终端</string>
+    <string name="ccm_page_up">向上翻页</string>
+    <string name="ccm_page_down">向下翻页</string>
+    <string name="ccm_scroll_bottom">回到底部</string>
+    <string name="ccm_scroll_toggle">翻页按钮开关</string>
+    <string name="ccm_config">CCMobile 配置</string>
+</resources>

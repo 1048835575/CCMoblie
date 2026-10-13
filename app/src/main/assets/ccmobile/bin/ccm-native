@@ -1,0 +1,85 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# 安装 / 更新最新版 Claude Code（原生 musl 版本，经 musl 加载器在 Android 上运行）。
+# 用法：ccm-native [install|update|status] [--force]
+#   install / update  下载最新版（已是最新则跳过，--force 强制重装）
+#   status            输出当前已安装的原生版本
+# 结果行（供 App 解析）：CCM_NATIVE_VERSION=<版本>、CCM_NATIVE_UPDATED=<新版本>、CCM_NATIVE_ERROR=<原因>
+CCM_DIR="$HOME/.ccmobile"
+[ -f "$CCM_DIR/config.env" ] && . "$CCM_DIR/config.env"
+# 双语提示：L "中文" "English"，按 CCM_LANG 选择
+L() { if [ "$CCM_LANG" = "en" ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+NAT="$CCM_DIR/native"
+ACTION="${1:-update}"; FORCE=0
+for a in "$@"; do [ "$a" = "--force" ] && FORCE=1; done
+
+fail() { echo "$(L "安装最新版失败：$*" "Installing Latest failed: $*")"; echo "CCM_NATIVE_ERROR=$*"; rm -rf "$NAT/tmp"; exit 1; }
+cur_version() { cat "$NAT/current/VERSION" 2>/dev/null; }
+
+if [ "$ACTION" = "status" ]; then
+    v=$(cur_version); [ -n "$v" ] && echo "CCM_NATIVE_VERSION=$v" || echo "CCM_NATIVE_VERSION="
+    exit 0
+fi
+
+case "$(uname -m)" in
+    aarch64|arm64) PKG="claude-code-linux-arm64-musl"; LD="ld-musl-aarch64.so.1" ;;
+    x86_64)        PKG="claude-code-linux-x64-musl";   LD="ld-musl-x86_64.so.1" ;;
+    *) fail "$(L "不支持的 CPU 架构 $(uname -m)" "Unsupported CPU architecture $(uname -m)")" ;;
+esac
+case "${CCM_NPM_REGISTRY:-npmmirror}" in
+    npmmirror) REG="https://registry.npmmirror.com" ;;
+    *)         REG="https://registry.npmjs.org" ;;
+esac
+[ -f "$NAT/$LD" ] || fail "$(L "缺少 musl 加载器 $LD（请重新打开 App 释放文件）" "Missing musl loader $LD (reopen the app to restore it)")"
+
+# 1. 查询最新版本
+echo "$(L "查询最新版本…" "Checking the latest version…")"
+LATEST=$(curl -fsSL -m 30 "$REG/@anthropic-ai/claude-code/latest" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version)}catch(e){}})')
+[ -n "$LATEST" ] || fail "$(L "无法从 $REG 获取版本信息，请检查网络" "Cannot get version info from $REG, check your network")"
+CUR=$(cur_version)
+echo "$(L "最新版本 $LATEST，已安装 ${CUR:-无}" "Latest $LATEST, installed ${CUR:-none}")"
+if [ "$LATEST" = "$CUR" ] && [ "$FORCE" = 0 ]; then
+    echo "$(L "已是最新" "Already up to date")"; echo "CCM_NATIVE_VERSION=$CUR"; exit 0
+fi
+
+# 2. 下载原生包（约 110MB）
+URL=$(curl -fsSL -m 30 "$REG/@anthropic-ai/$PKG/$LATEST" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).dist.tarball)}catch(e){}})')
+[ -n "$URL" ] || fail "$(L "找不到 $PKG@$LATEST 的下载地址" "No download URL for $PKG@$LATEST")"
+rm -rf "$NAT/tmp"; mkdir -p "$NAT/tmp" "$NAT/versions"
+echo "$(L "下载 $PKG@$LATEST（约 110MB）…" "Downloading $PKG@$LATEST (~110MB)…")"
+curl -fL --retry 3 -sS -m 1800 -o "$NAT/tmp/pkg.tgz" "$URL" &
+CP=$!
+while kill -0 $CP 2>/dev/null; do
+    sleep 3
+    echo "$(L 已下载 Downloaded) $(( $(stat -c %s "$NAT/tmp/pkg.tgz" 2>/dev/null || echo 0) / 1048576 ))MB"
+done
+wait $CP || fail "$(L "下载失败" "Download failed")"
+[ -s "$NAT/tmp/pkg.tgz" ] || fail "$(L "下载失败" "Download failed")"
+tar xzf "$NAT/tmp/pkg.tgz" -C "$NAT/tmp" || fail "$(L "解压失败" "Extraction failed")"
+[ -f "$NAT/tmp/package/claude" ] || fail "$(L "安装包中没有 claude 可执行文件" "No claude executable in the package")"
+
+# 3. 生成适配 Android 的 musl 加载器（DNS 修正）
+node "$NAT/patch-musl.js" "$NAT/$LD" "$NAT/ld-musl.so.1" "${CCM_NATIVE_DNS:-223.5.5.5}" || fail "$(L "生成加载器失败" "Failed to prepare the loader")"
+
+# 4. 安装到独立版本目录并验证能运行
+DEST="$NAT/versions/$LATEST"
+rm -rf "$DEST"; mkdir -p "$DEST"
+mv "$NAT/tmp/package/claude" "$DEST/claude" && chmod 700 "$DEST/claude"
+# 与 ccm-env 相同的启动条件：去掉安卓 LD_PRELOAD，且不经系统 linker 启动
+OUT=$(export TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE=disable; unset LD_PRELOAD; "$NAT/ld-musl.so.1" "$DEST/claude" --version 2>&1)
+case "$OUT" in
+    *"$LATEST"*) echo "$(L "验证通过：$OUT" "Verified: $OUT")" ;;
+    *) rm -rf "$DEST"; fail "$(L "新版本无法在本机运行：$OUT" "The new version cannot run on this device: $OUT")" ;;
+esac
+echo "$LATEST" > "$DEST/VERSION"
+
+# 5. 原子切换并清理旧版本（保留上一个版本以便回退）
+ln -sfn "versions/$LATEST" "$NAT/current.new" && mv -T "$NAT/current.new" "$NAT/current"
+for d in "$NAT"/versions/*; do
+    v=$(basename "$d")
+    [ "$v" = "$LATEST" ] || [ "$v" = "$CUR" ] || rm -rf "$d"
+done
+rm -rf "$NAT/tmp"
+echo "$(L "已安装 Claude Code $LATEST（最新版）" "Installed Claude Code $LATEST (latest)")"
+echo "CCM_NATIVE_VERSION=$LATEST"
+[ -n "$CUR" ] && [ "$CUR" != "$LATEST" ] && echo "CCM_NATIVE_UPDATED=$LATEST"
+exit 0

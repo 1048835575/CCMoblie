@@ -1,0 +1,31 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# 连接本机无线调试。用法：ccm-connect [端口] [--quiet]
+# 端口来源优先级：参数 > App 记录的 ~/.ccmobile/adb_port > adb mdns 发现
+CCM_DIR="$HOME/.ccmobile"
+QUIET=0; PORT=""
+for a in "$@"; do case "$a" in --quiet) QUIET=1 ;; *) PORT="$a" ;; esac; done
+say() { [ "$QUIET" = 1 ] || echo "$*"; }
+
+adb start-server >/dev/null 2>&1
+if adb devices | awk 'NR>1 && $2=="device"' | grep -q .; then
+    say "已连接：$(adb devices | awk 'NR>1 && $2=="device"{print $1}' | head -1)"; exit 0
+fi
+
+try_port() {
+    [ -n "$1" ] || return 1
+    adb connect "127.0.0.1:$1" 2>&1 | grep -q "connected to" || return 1
+    echo "$1" > "$CCM_DIR/adb_port"
+    say "已连接 127.0.0.1:$1"
+}
+
+try_port "$PORT" && exit 0
+[ -f "$CCM_DIR/adb_port" ] && try_port "$(cat "$CCM_DIR/adb_port")" && exit 0
+for p in $(adb mdns services 2>/dev/null | grep _adb-tls-connect | grep -oE ':[0-9]+' | tr -d ':'); do
+    try_port "$p" && exit 0
+done
+
+say "连接失败。请确认："
+say "  1. 已连接 Wi-Fi，并在开发者选项里打开「无线调试」"
+say "  2. 已在「CCMobile 配置 → 无线调试配对」完成过配对"
+say "  3. 或手动：ccm-connect <无线调试页面显示的端口>"
+exit 1

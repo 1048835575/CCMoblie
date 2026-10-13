@@ -27,6 +27,8 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.termux.R;
+import com.termux.ccm.CcmConfig;
+import com.termux.ccm.CcmConfigActivity;
 import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
@@ -251,6 +253,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setToggleKeyboardView();
 
+        setCcmScrollToggle();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -398,6 +402,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             if (mIsVisible) {
                 TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
                     if (mTermuxService == null) return; // Activity might have been destroyed.
+                    // CCMobile：释放/更新脚本和配置（安装与配置引导在 CcmHomeActivity）
+                    CcmConfig.installAssets(TermuxActivity.this);
                     try {
                         boolean launchFailsafe = false;
                         if (intent != null && intent.getExtras() != null) {
@@ -568,6 +574,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         settingsButton.setOnClickListener(v -> {
             ActivityUtils.startActivity(this, new Intent(this, SettingsActivity.class));
         });
+        findViewById(R.id.ccm_config_button).setOnClickListener(v ->
+            ActivityUtils.startActivity(this, new Intent(this, CcmConfigActivity.class)));
     }
 
     private void setNewSessionButtonView() {
@@ -580,6 +588,43 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 -1, null, null);
             return true;
         });
+    }
+
+    /** CCMobile：终端右侧的翻页切换按钮。⇅ 展开/收起，▲▼ 翻页（长按连续翻），⤓ 回到底部。展开状态会记住。 */
+    private void setCcmScrollToggle() {
+        final View up = findViewById(R.id.ccm_scroll_up);
+        final View down = findViewById(R.id.ccm_scroll_down);
+        final View bottom = findViewById(R.id.ccm_scroll_bottom);
+        final View toggle = findViewById(R.id.ccm_scroll_toggle);
+        final android.content.SharedPreferences prefs = CcmConfig.prefs(this);
+        final Runnable apply = () -> {
+            boolean open = prefs.getBoolean("terminal_scroll_buttons", false);
+            int vis = open ? View.VISIBLE : View.GONE;
+            up.setVisibility(vis);
+            down.setVisibility(vis);
+            bottom.setVisibility(vis);
+            toggle.setAlpha(open ? 1f : 0.6f);
+        };
+        apply.run();
+        toggle.setOnClickListener(v -> {
+            prefs.edit().putBoolean("terminal_scroll_buttons", !prefs.getBoolean("terminal_scroll_buttons", false)).apply();
+            apply.run();
+        });
+        up.setOnClickListener(v -> mTerminalView.scrollPage(true));
+        down.setOnClickListener(v -> mTerminalView.scrollPage(false));
+        bottom.setOnClickListener(v -> mTerminalView.scrollToBottom());
+        // 长按连续翻页
+        for (final View b : new View[]{up, down}) {
+            final boolean isUp = b == up;
+            final Runnable repeat = new Runnable() {
+                @Override public void run() {
+                    if (!b.isPressed()) return;
+                    mTerminalView.scrollPage(isUp);
+                    b.postDelayed(this, 120);
+                }
+            };
+            b.setOnLongClickListener(v -> { b.post(repeat); return true; });
+        }
     }
 
     private void setToggleKeyboardView() {

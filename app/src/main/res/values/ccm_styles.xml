@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Ccm" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/ccm_accent</item>
+        <item name="colorPrimaryVariant">@color/ccm_accent</item>
+        <item name="colorOnPrimary">@color/ccm_on_accent</item>
+        <item name="colorSecondary">@color/ccm_accent</item>
+        <item name="colorOnSecondary">@color/ccm_on_accent</item>
+        <item name="colorAccent">@color/ccm_accent</item>
+        <item name="colorSurface">@color/ccm_surface</item>
+        <item name="colorOnSurface">@color/ccm_text</item>
+        <item name="android:colorBackground">@color/ccm_bg</item>
+        <item name="android:windowBackground">@color/ccm_bg</item>
+        <item name="android:textColorPrimary">@color/ccm_text</item>
+        <item name="android:textColorSecondary">@color/ccm_text_secondary</item>
+        <item name="android:textColorHint">@color/ccm_text_tertiary</item>
+        <item name="android:statusBarColor">@color/ccm_bg</item>
+        <item name="android:navigationBarColor">@color/ccm_bg</item>
+        <item name="android:windowLightStatusBar">@bool/ccm_light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/ccm_light_bars</item>
+        <item name="bottomSheetDialogTheme">@style/Theme.Ccm.BottomSheet</item>
+        <item name="materialButtonStyle">@style/Widget.Ccm.Button</item>
+    </style>
+
+    <style name="Theme.Ccm.BottomSheet" parent="ThemeOverlay.MaterialComponents.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.Ccm.BottomSheet</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/ccm_surface</item>
+    </style>
+
+    <style name="Widget.Ccm.BottomSheet" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="backgroundTint">@color/ccm_surface</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.Ccm.Sheet</item>
+    </style>
+
+    <style name="ShapeAppearance.Ccm.Sheet" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">20dp</item>
+        <item name="cornerSizeTopRight">20dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <style name="Widget.Ccm.Button" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="cornerRadius">10dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <style name="Widget.Ccm.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="cornerRadius">10dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textColor">@color/ccm_text</item>
+        <item name="strokeColor">@color/ccm_border</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <style name="Widget.Ccm.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textColor">@color/ccm_accent</item>
+    </style>
+
+    <style name="Ccm.IconButton" parent="">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:padding">9dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="tint">@color/ccm_text_secondary</item>
+    </style>
+
+    <style name="Ccm.Text.Title" parent="">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textColor">@color/ccm_text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Ccm.Text.Body" parent="">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/ccm_text</item>
+        <item name="android:lineSpacingMultiplier">1.15</item>
+    </style>
+
+    <style name="Ccm.Text.Secondary" parent="">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/ccm_text_secondary</item>
+    </style>
+
+    <style name="Ccm.Text.Section" parent="">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/ccm_text_tertiary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.04</item>
+    </style>
+
+    <style name="Ccm.Field" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/ccm_bg_field</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">11dp</item>
+        <item name="android:paddingBottom">11dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/ccm_text</item>
+        <item name="android:textColorHint">@color/ccm_text_tertiary</item>
+        <item name="android:singleLine">true</item>
+    </style>
+</resources>

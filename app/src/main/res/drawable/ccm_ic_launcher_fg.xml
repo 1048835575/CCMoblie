@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 108x108 自适应图标前景：终端提示符 >_，位于中心 66dp 安全区内 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M32,41.5 L37.5,36 L55.5,54 L37.5,72 L32,66.5 L44.5,54 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M58,65.5 h19 v6.5 h-19 Z" />
+</vector>

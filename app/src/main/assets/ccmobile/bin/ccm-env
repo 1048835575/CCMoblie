@@ -1,0 +1,75 @@
+# 被 ccm / ccm-chat source：检查环境并组装 Claude Code 的公共参数到 CCM_ARGS 数组。
+# 模型、API、权限默认值等写在 ~/.claude/settings.json（由 App 设置页生成）。
+# 可选环境变量：CCM_CWD 项目目录，CCM_MODEL 本次使用的模型，CCM_PERMISSION_MODE 权限模式
+CCM_DIR="$HOME/.ccmobile"
+[ -f "$CCM_DIR/config.env" ] && . "$CCM_DIR/config.env"
+# 双语提示：L "中文" "English"，按 CCM_LANG 选择
+L() { if [ "$CCM_LANG" = "en" ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+export CCM_INSIDE=1
+
+if [ ! -f "$CCM_DIR/.installed" ]; then
+    echo "$(L "环境还没装好：请在 CCMobile 里打开「设置 → 环境与连接向导」安装，或执行 ccm-setup" "The environment is not installed: open Settings → Setup & connection wizard in CCMobile, or run ccm-setup")" >&2; exit 1
+fi
+if [ "$CCM_AUTH_MODE" = "subscription" ]; then
+    # Claude 订阅：使用 claude auth login 保存的账号凭据，不能混入第三方 API 变量
+    unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY
+    if [ -z "$CCM_SKIP_AUTH_CHECK" ] && [ ! -f "$HOME/.claude/.credentials.json" ] && [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+        echo "$(L "还没有登录 Claude 账号：请在 CCMobile 设置里点「登录 Claude 账号」" "Not signed in to Claude: tap 'Sign in to Claude' in CCMobile settings")" >&2; exit 1
+    fi
+elif [ -z "$ANTHROPIC_AUTH_TOKEN" ] && [ -z "$CCM_SKIP_AUTH_CHECK" ]; then
+    echo "$(L "未配置 API Key：请在 CCMobile 设置里填写" "No API key configured: set one in CCMobile settings")" >&2; exit 1
+fi
+
+export SHELL="$PREFIX/bin/bash"
+export USE_BUILTIN_RIPGREP=0
+
+# 运行方式：CCM_RUN 为启动 Claude Code 的命令前缀
+#   稳定版：node 运行 2.1.112 的 cli.js
+#   最新版（实验）：经适配过的 musl 加载器运行原生版；不可用时自动回退稳定版
+CCM_CLI="$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+CCM_RUN=(node "$CCM_CLI")
+CCM_RUNTIME="stable"
+if [ "$CCM_CC_CHANNEL" = "latest" ]; then
+    NAT="$CCM_DIR/native"
+    if [ -x "$NAT/current/claude" ] && [ -x "$NAT/ld-musl.so.1" ]; then
+        # musl 进程不能带 Termux 的安卓 LD_PRELOAD；执行命令用的 shell 再把它加回来
+        export CCM_TERMUX_PRELOAD="$LD_PRELOAD"
+        unset LD_PRELOAD
+        # termux-exec 默认经系统 linker 启动程序，系统 linker 加载不了 musl 加载器，改为直接 exec
+        export CCM_TERMUX_LINKER_MODE="${TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE-}"
+        export TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE=disable
+        chmod 700 "$NAT/bash" 2>/dev/null
+        export SHELL="$NAT/bash" CLAUDE_CODE_SHELL="$NAT/bash"
+        # musl 从 /proc/self/fd/9 读取 DNS 配置（App 按当前网络写入），读不到时用加载器内置的公共 DNS
+        [ -f "$NAT/resolv.conf" ] && exec 9<"$NAT/resolv.conf"
+        CCM_RUN=("$NAT/ld-musl.so.1" "$NAT/current/claude")
+        CCM_RUNTIME="latest"
+    else
+        echo "$(L "最新版尚未安装成功，本次使用稳定版 2.1.112（可在设置中重试安装）" "Latest is not installed; using Stable 2.1.112 this time (retry in Settings)")" >&2
+    fi
+fi
+export CCM_RUNTIME
+CCM_ARGS=(--mcp-config "$CCM_DIR/mcp.json")
+if [ -n "$CCM_MODEL" ]; then
+    export ANTHROPIC_MODEL="$CCM_MODEL"
+    CCM_ARGS+=(--model "$CCM_MODEL")
+fi
+case "$CCM_PERMISSION_MODE" in
+    bypassPermissions) CCM_ARGS+=(--dangerously-skip-permissions) ;;
+    auto|acceptEdits|plan|default|dontAsk) CCM_ARGS+=(--permission-mode "$CCM_PERMISSION_MODE") ;;
+esac
+if [ "$CCM_LEAN" = "1" ]; then
+    # 精简模式：去掉很少用到的工具，减少每轮请求的工具定义 token
+    CCM_ARGS+=(--disallowedTools "NotebookEdit WebSearch CronCreate CronDelete CronList EnterWorktree ExitWorktree")
+fi
+
+# 项目目录：CCM_CWD > 当前目录（在主目录启动时默认进手机助手工作区）
+if [ -n "$CCM_CWD" ]; then
+    CCM_WORKDIR="$CCM_CWD"
+elif [ "$PWD" = "$HOME" ] || [ "$PWD" = "/" ]; then
+    CCM_WORKDIR="$CCM_DIR/workspace"
+else
+    CCM_WORKDIR="$PWD"
+fi
+mkdir -p "$CCM_WORKDIR" 2>/dev/null
+cd "$CCM_WORKDIR" || { echo "$(L "无法进入项目目录：$CCM_WORKDIR" "Cannot enter project folder: $CCM_WORKDIR")" >&2; exit 1; }

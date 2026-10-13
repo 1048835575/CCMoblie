@@ -3,3 +3,7 @@
 *.gradle    text eol=lf
 *.mk        text eol=lf
 *.sh        text eol=lf
+
+# CCMobile：手机端执行的脚本必须保持 LF，否则 bash 无法运行
+app/src/main/assets/ccmobile/** text eol=lf
+app/src/main/assets/ccmobile/native/*.so.1 binary
