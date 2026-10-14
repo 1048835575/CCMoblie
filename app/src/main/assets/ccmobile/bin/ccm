@@ -2,7 +2,9 @@
 # 终端里交互式启动接入手机控制工具的 Claude Code。额外参数原样传给 claude。
 . "$HOME/.ccmobile/bin/ccm-env"
 
-# 后台尝试连上本机 ADB，失败也不影响启动（MCP 工具会再试）
-"$CCM_DIR/bin/ccm-connect" --quiet >/dev/null 2>&1 &
+# 高级模式（无线调试）开启时，后台尝试连上本机 ADB；默认只用无障碍服务
+if [ "$CCM_ADB_ENABLED" = 1 ] && [ "$(date +%s)000" -lt "${CCM_ADB_UNTIL:-0}" ]; then
+    "$CCM_DIR/bin/ccm-connect" --quiet >/dev/null 2>&1 &
+fi
 
 exec "${CCM_RUN[@]}" "${CCM_ARGS[@]}" "$@"

@@ -217,6 +217,7 @@ public class CcmHomeActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         mVisible = true;
+        CcmTaskState.setFollowUp(mFollowUp);
         ((android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(NOTIFY_ATTENTION);
         CcmOverlay.hide();
     }
@@ -238,8 +239,22 @@ public class CcmHomeActivity extends AppCompatActivity {
         checkPhone();
     }
 
+    /** 悬浮窗里委派的下一步任务：空闲时直接在当前会话发送，任务进行中则排队 */
+    private final CcmTaskState.FollowUp mFollowUp = text -> runOnUiThread(() -> {
+        if (!isReady() || mProject == null) {
+            toast(t("请先完成引导：安装 Claude Code 并配置 API Key"));
+            return;
+        }
+        if (isRunning()) {
+            CcmTaskState.enqueue(text);
+        } else {
+            send(text, false);
+        }
+    });
+
     @Override
     protected void onDestroy() {
+        CcmTaskState.clearFollowUp(mFollowUp);
         super.onDestroy();
         if (mChatProcess != null && mChatProcess.isRunning()) mChatProcess.stop();
     }
@@ -657,8 +672,11 @@ public class CcmHomeActivity extends AppCompatActivity {
         sheet.show();
     }
 
+    /** 手机控制状态：无障碍服务在运行即可用；高级模式（无线调试）开启时才检查并静默重连 adb。 */
     private void checkPhone() {
-        setPhonePill(false, t("手机"));
+        boolean a11y = CcmA11yService.isRunning();
+        setPhonePill(a11y, t("手机"));
+        if (a11y || !CcmConfig.isAdbEnabled(this)) return;
         if (!CcmConfig.isEnvironmentInstalled() || !CcmAdb.adbInstalled()) return;
         new Thread(() -> {
             boolean ok = CcmAdb.isConnected();
@@ -804,14 +822,15 @@ public class CcmHomeActivity extends AppCompatActivity {
             startActivity(new Intent(this, CcmSetupActivity.class));
             return;
         }
-        send(text);
+        send(text, true);
     }
 
-    private void send(String text) {
+    /** @param fromComposer 来自输入框（带上待发送图片并清空输入框）；悬浮窗委派的任务不动输入框 */
+    private void send(String text, boolean fromComposer) {
         JSONObject userMsg;
         try {
             JSONArray content = new JSONArray();
-            for (String b64 : mPendingImages) {
+            if (fromComposer) for (String b64 : mPendingImages) {
                 content.put(new JSONObject().put("type", "image").put("source", new JSONObject()
                     .put("type", "base64").put("media_type", "image/jpeg").put("data", b64)));
             }
@@ -823,11 +842,15 @@ public class CcmHomeActivity extends AppCompatActivity {
             return;
         }
 
-        mRenderer.addUserMessage(text, new ArrayList<>(mPendingThumbs));
-        mPendingImages.clear();
-        mPendingThumbs.clear();
-        renderAttachments();
-        mInput.setText("");
+        if (fromComposer) {
+            mRenderer.addUserMessage(text, new ArrayList<>(mPendingThumbs));
+            mPendingImages.clear();
+            mPendingThumbs.clear();
+            renderAttachments();
+            mInput.setText("");
+        } else {
+            mRenderer.addUserMessage(text, new ArrayList<>());
+        }
         updateEmptyState();
 
         Map<String, String> env = new HashMap<>();
@@ -969,9 +992,14 @@ public class CcmHomeActivity extends AppCompatActivity {
         mPendingRequests.clear();
         removeWorking();
         setSendState(false);
+        boolean stopped = code == 143 || code == 137;
         if (CcmTaskState.isRunning()) {
-            boolean stopped = code == 143 || code == 137;
             CcmTaskState.end(!stopped, stopped ? t("已停止") : t("异常退出（") + code + t("）"));
+        }
+        // 悬浮窗排队的下一步任务：本轮正常结束后接着发送
+        if (!stopped && mGotResult) {
+            String next = CcmTaskState.pollQueued();
+            if (next != null) mInput.post(() -> send(next, false));
         }
         if (!mGotResult) {
             String err = mStderr.toString().trim();

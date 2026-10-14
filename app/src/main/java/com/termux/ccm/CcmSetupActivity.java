@@ -20,7 +20,7 @@ import com.termux.shared.termux.TermuxConstants;
 
 import java.io.File;
 
-/** 环境与连接向导：安装开发环境 → 配置模型 → 连接手机。安装任务放在静态字段，页面重建后可接上进度。 */
+/** 环境与连接向导：安装开发环境 → 配置模型 → 开启手机控制。安装任务放在静态字段，页面重建后可接上进度。 */
 public class CcmSetupActivity extends AppCompatActivity {
 
     private static CcmProcess sSetupProcess;
@@ -95,9 +95,9 @@ public class CcmSetupActivity extends AppCompatActivity {
 
         // 3. 手机
         LinearLayout c3 = ui.card(c);
-        mPhoneStatus = ui.stepHeader(c3, 3, t("连接手机（可选）"));
-        ui.hint(c3, t("通过无线调试让 AI 能点击、输入、截图。只写代码可以跳过。"));
-        ui.outlined(c3, t("去连接"), v -> startActivity(new Intent(this, CcmPairActivity.class)));
+        mPhoneStatus = ui.stepHeader(c3, 3, t("开启手机控制（可选）"));
+        ui.hint(c3, t("开启无障碍服务，让 AI 能点击、输入、截图。只写代码可以跳过。"));
+        ui.outlined(c3, t("去开启"), v -> startActivity(new Intent(this, CcmPairActivity.class)));
 
         mStartButton = ui.primary(c, t("开始使用"), v -> {
             // 主界面是 singleTask：已存在则回到它，否则新建
@@ -117,10 +117,8 @@ public class CcmSetupActivity extends AppCompatActivity {
         super.onResume();
         sUiRefresh = () -> runOnUiThread(this::refresh);
         refresh();
-        if (CcmConfig.isEnvironmentInstalled()) new Thread(() -> {
-            mPhoneConnected = CcmAdb.isConnected();
-            runOnUiThread(this::refresh);
-        }).start();
+        mPhoneConnected = CcmA11yService.isRunning();
+        refresh();
     }
 
     @Override
@@ -150,7 +148,7 @@ public class CcmSetupActivity extends AppCompatActivity {
 
         setStatus(mApiStatus, api ? "✓ " + (CcmConfig.isSubscription(this) ? t("Claude 订阅 · ") : "") + CcmConfig.mainModel(this) : (CcmConfig.isSubscription(this) ? t("未登录") : t("未填写")),
             api ? R.color.ccm_ok : R.color.ccm_text_secondary);
-        setStatus(mPhoneStatus, mPhoneConnected ? t("✓ 已连接") : t("未连接"), mPhoneConnected ? R.color.ccm_ok : R.color.ccm_text_secondary);
+        setStatus(mPhoneStatus, mPhoneConnected ? t("✓ 已开启") : t("未开启"), mPhoneConnected ? R.color.ccm_ok : R.color.ccm_text_secondary);
         mStartButton.setEnabled(env && api);
         mStartButton.setText(env && api ? t("开始使用") : t("完成第 1、2 步后开始使用"));
     }

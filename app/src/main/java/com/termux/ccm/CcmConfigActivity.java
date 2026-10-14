@@ -179,7 +179,7 @@ public class CcmConfigActivity extends AppCompatActivity {
         ui.section(c, t("其他"));
         LinearLayout other = ui.card(c);
         ui.outlined(other, t("环境与连接向导"), v -> startActivity(new Intent(this, CcmSetupActivity.class)));
-        ui.outlined(other, t("连接手机（无线调试）"), v -> startActivity(new Intent(this, CcmPairActivity.class)));
+        ui.outlined(other, t("手机控制"), v -> startActivity(new Intent(this, CcmPairActivity.class)));
         TextView path = ui.hint(other, t("配置文件：") + CcmProjects.displayPath(TermuxConstants.TERMUX_HOME_DIR_PATH + "/.claude/settings.json"));
         path.setTextIsSelectable(true);
 

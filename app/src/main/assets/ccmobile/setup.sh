@@ -27,27 +27,63 @@ echo
 
 # 1. 软件源镜像
 step 1 "$(L "配置软件源" "Configure package mirror")"
-case "${CCM_APT_MIRROR:-tuna}" in
-    tuna)    MIRROR="https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main" ;;
-    ustc)    MIRROR="https://mirrors.ustc.edu.cn/termux/apt/termux-main" ;;
-    aliyun)  MIRROR="https://mirrors.aliyun.com/termux/termux-main" ;;
-    *)       MIRROR="https://packages-cf.termux.dev/apt/termux-main" ;;
-esac
-c_info "$(L "使用软件源：$MIRROR" "Using mirror: $MIRROR")"
-echo "deb $MIRROR stable main" > "$PREFIX/etc/apt/sources.list"
+mirror_url() {
+    case "$1" in
+        tuna)    echo "https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main" ;;
+        ustc)    echo "https://mirrors.ustc.edu.cn/termux/apt/termux-main" ;;
+        aliyun)  echo "https://mirrors.aliyun.com/termux/termux-main" ;;
+        *)       echo "https://packages-cf.termux.dev/apt/termux-main" ;;
+    esac
+}
+# 用户选的镜像优先，失败（如镜像正在同步、索引大小不符）时依次换下一个
+MIRRORS=()
+for m in "${CCM_APT_MIRROR:-tuna}" tuna ustc aliyun official; do
+    case " ${MIRRORS[*]} " in *" $m "*) ;; *) MIRRORS+=("$m") ;; esac
+done
+MI=0
+use_mirror() {
+    MIRROR="$(mirror_url "${MIRRORS[$MI]}")"
+    c_info "$(L "使用软件源：$MIRROR" "Using mirror: $MIRROR")"
+    echo "deb $MIRROR stable main" > "$PREFIX/etc/apt/sources.list"
+    rm -rf "$PREFIX/var/lib/apt/lists/partial/"* 2>/dev/null
+}
 # 避免 termux-change-repo 的 mirrors 选择覆盖我们的配置
 rm -f "$PREFIX/etc/termux/chosen_mirrors" 2>/dev/null
+use_mirror
 
+export DEBIAN_FRONTEND=noninteractive
 APT_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+APT_LOG="$PREFIX/tmp/ccm-apt.log"
+mkdir -p "$PREFIX/tmp"
+
+# apt 有些失败（索引下载出错）退出码仍为 0，所以同时检查输出里的 E:/Err: 行
+apt_ok() {
+    "$@" 2>&1 | tee "$APT_LOG"
+    [ "${PIPESTATUS[0]}" = 0 ] && ! grep -qE '^(E|Err):' "$APT_LOG"
+}
+
+# 在当前镜像执行，失败则换下一个镜像（重新 update）后再试
+apt_retry() {
+    local what="$1"; shift
+    while :; do
+        apt_ok "$@" && return 0
+        MI=$((MI + 1))
+        [ "$MI" -lt "${#MIRRORS[@]}" ] || fail "$what"
+        c_err "$(L "当前镜像失败，换下一个镜像重试…" "This mirror failed, trying the next one…")"
+        use_mirror
+        [ "$1" = apt-get ] && [ "$2" = update ] && continue
+        apt_ok apt-get update $APT_OPTS || continue
+    done
+}
 
 step 2 "$(L "更新软件包索引" "Update package index")"
-apt-get update $APT_OPTS || fail "apt update"
+apt_retry "apt update" apt-get update $APT_OPTS
 step 3 "$(L "升级基础包" "Upgrade base packages")"
-DEBIAN_FRONTEND=noninteractive apt-get upgrade $APT_OPTS || fail "apt upgrade"
+apt_retry "apt upgrade" apt-get upgrade $APT_OPTS
 
 step 4 "$(L "安装 Node.js / adb / ripgrep" "Install Node.js / adb / ripgrep")"
-DEBIAN_FRONTEND=noninteractive apt-get install $APT_OPTS \
-    nodejs-lts android-tools ripgrep git curl termux-tools || fail "apt install"
+apt_retry "apt install" apt-get install $APT_OPTS \
+    nodejs-lts android-tools ripgrep git curl termux-tools
 
 command -v node >/dev/null || fail "$(L "node 未安装成功" "node was not installed")"
 command -v adb  >/dev/null || fail "$(L "adb 未安装成功" "adb was not installed")"

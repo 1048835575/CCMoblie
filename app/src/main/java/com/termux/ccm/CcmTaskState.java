@@ -30,6 +30,13 @@ public final class CcmTaskState {
 
     public interface Listener { void onTaskChanged(); }
 
+    /** 悬浮窗「继续委派」的接收方（主界面注册），在当前会话里发送下一条消息 */
+    public interface FollowUp { void send(String text); }
+
+    private static FollowUp sFollowUp;
+    /** 任务进行中追加的消息，当前任务结束后依次发送 */
+    private static final List<String> sQueue = new ArrayList<>();
+
     private static final List<Listener> sListeners = new CopyOnWriteArrayList<>();
     private static final List<Step> sSteps = new ArrayList<>();
     private static final StringBuilder sThinking = new StringBuilder();
@@ -67,8 +74,34 @@ public final class CcmTaskState {
     public static void removeListener(Listener l) { sListeners.remove(l); }
 
     public static void stop() {
+        // 用户主动停止：排队的后续任务也一并取消
+        sQueue.clear();
         if (sRunning && sStopAction != null) sStopAction.run();
+        notifyChanged();
     }
+
+    public static void setFollowUp(FollowUp f) { sFollowUp = f; }
+    public static void clearFollowUp(FollowUp f) { if (sFollowUp == f) sFollowUp = null; }
+    public static boolean canFollowUp() { return sFollowUp != null; }
+
+    /** 悬浮窗提交下一步任务。没有接收方（主界面已被系统回收）时返回 false。 */
+    public static boolean followUp(String text) {
+        if (sFollowUp == null) return false;
+        sFollowUp.send(text);
+        return true;
+    }
+
+    public static void enqueue(String text) {
+        sQueue.add(text);
+        notifyChanged();
+    }
+
+    public static String pollQueued() {
+        return sQueue.isEmpty() ? null : sQueue.remove(0);
+    }
+
+    public static int queuedCount() { return sQueue.size(); }
+
 
     // ---------------- 写 ----------------
 

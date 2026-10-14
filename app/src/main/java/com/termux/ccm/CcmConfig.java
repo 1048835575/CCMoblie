@@ -62,6 +62,18 @@ public final class CcmConfig {
     public static final String KEY_VISION_BASE_URL = "vision_base_url";
     public static final String KEY_VISION_KEY = "vision_key";
     public static final String KEY_VISION_MODEL = "vision_model";
+    /** 高级模式：允许通过无线调试（adb）控制手机，默认关闭；手机控制默认走无障碍服务 */
+    public static final String KEY_ADB_ENABLED = "adb_enabled";
+    /** 高级模式的到期时间（毫秒时间戳）：开启后最多保持 24 小时，到期需重新确认 */
+    public static final String KEY_ADB_UNTIL = "adb_until";
+    public static final long ADB_TTL_MS = 24L * 60 * 60 * 1000;
+    /** 敏感应用（银行、支付等）包名，逗号分隔：无障碍服务在这些应用中拒绝读屏和操作 */
+    public static final String KEY_SENSITIVE_APPS = "sensitive_apps";
+    public static final String DEFAULT_SENSITIVE_APPS = "com.eg.android.AlipayGphone,com.unionpay,cmb.pb,com.icbc,"
+        + "com.chinamworld.main,com.android.bankabc,com.chinamworld.bocmbci,com.bankcomm.Bankcomm,com.ecitic.bank.mobile,"
+        + "com.cib.cibmb,com.spdbccc.app,cn.com.spdb.mobilebank.per,com.pingan.paces.ccms,com.yitong.mbank.psbc,"
+        + "com.hxb.mobile.client,com.cmbc.cc.mbank,com.webank.wemoney,com.jd.jrapp,com.paypal.android.p2pmobile,"
+        + "com.google.android.apps.walletnfcrel";
 
     public static final String DEFAULT_BASE_URL = "https://api.deepseek.com/anthropic";
     public static final String DEFAULT_MODEL = "deepseek-flash[1m]";
@@ -98,6 +110,7 @@ public final class CcmConfig {
             case KEY_SUB_MODEL: return p.getString(key, "sonnet");
             case KEY_SUB_MODELS: return p.getString(key, "sonnet,opus,haiku");
             case KEY_NATIVE_DNS: return p.getString(key, NATIVE_DNS_CHOICES[0]);
+            case KEY_SENSITIVE_APPS: return p.getString(key, DEFAULT_SENSITIVE_APPS);
             default: return p.getString(key, "");
         }
     }
@@ -105,6 +118,20 @@ public final class CcmConfig {
     public static boolean getBool(Context context, String key) {
         boolean def = KEY_LEAN.equals(key) || KEY_OVERLAY.equals(key) || KEY_MAIN_VISION.equals(key);
         return prefs(context).getBoolean(key, def);
+    }
+
+    /** 高级模式（无线调试）是否开启且未过期。默认关闭，只能在「手机控制」页经多次确认后开启。 */
+    public static boolean isAdbEnabled(Context context) {
+        SharedPreferences p = prefs(context);
+        if (!p.getBoolean(KEY_ADB_ENABLED, false)) return false;
+        if (System.currentTimeMillis() < p.getLong(KEY_ADB_UNTIL, 0)) return true;
+        p.edit().putBoolean(KEY_ADB_ENABLED, false).apply();
+        return false;
+    }
+
+    public static void setAdbEnabled(Context context, boolean on) {
+        prefs(context).edit().putBoolean(KEY_ADB_ENABLED, on)
+            .putLong(KEY_ADB_UNTIL, on ? System.currentTimeMillis() + ADB_TTL_MS : 0).apply();
     }
 
     public static boolean isSubscription(Context context) {
@@ -182,6 +209,10 @@ public final class CcmConfig {
         export(sb, "CCM_AUTOSTART", getBool(context, KEY_AUTOSTART) ? "1" : "0");
         export(sb, "CCM_PERMISSION_MODE", get(context, KEY_PERMISSION_MODE));
         export(sb, "CCM_LEAN", getBool(context, KEY_LEAN) ? "1" : "0");
+        boolean adb = isAdbEnabled(context);
+        export(sb, "CCM_ADB_ENABLED", adb ? "1" : "0");
+        export(sb, "CCM_ADB_UNTIL", adb ? String.valueOf(prefs(context).getLong(KEY_ADB_UNTIL, 0)) : "0");
+        export(sb, "CCM_SENSITIVE_APPS", get(context, KEY_SENSITIVE_APPS));
         export(sb, "CCM_MAIN_VISION", getBool(context, KEY_MAIN_VISION) ? "1" : "0");
         export(sb, "CCM_VISION_BASE_URL", get(context, KEY_VISION_BASE_URL));
         export(sb, "CCM_VISION_KEY", get(context, KEY_VISION_KEY));
@@ -317,10 +348,17 @@ public final class CcmConfig {
             String en = readString(new File(CCM_DIR, "CLAUDE.en.md"));
             String cur = dest.exists() ? readString(dest) : null;
             String want = CcmI18n.isChinese() ? zh : en;
-            if (cur == null || ((cur.equals(zh) || cur.equals(en)) && !cur.equals(want))) writeString(dest, want);
+            if (cur == null || ((cur.equals(zh) || cur.equals(en)) && !cur.equals(want)) || isOldTemplate(cur)) writeString(dest, want);
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "installWorkspaceInstructions failed", e);
         }
+    }
+
+    /** 0.9.0 的旧模板（无线调试为主），用户未补充内容时升级为新模板 */
+    private static boolean isOldTemplate(String cur) {
+        String t = cur.trim();
+        boolean untouched = t.endsWith("## 用户习惯（可自行补充）") || t.endsWith("## User preferences (add your own)");
+        return untouched && (t.contains("里重新连接 / 配对") || t.contains("reconnect / pair under"));
     }
 
     public static boolean isLatestChannel(Context context) {

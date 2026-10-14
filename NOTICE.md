@@ -9,7 +9,8 @@ The full upstream history is preserved in this repository.
 Compared with upstream Termux, CCMobile:
 
 - Adds the `com.termux.ccm` package (`app/src/main/java/com/termux/ccm/`): home/chat UI, setup wizard,
-  settings, wireless-debugging pairing, input method for automated typing, floating progress bubble,
+  settings, accessibility service for phone control, wireless-debugging pairing (advanced, off by default),
+  input method for automated typing, floating progress bubble,
   Claude Code control-protocol handling, projects/sessions, i18n.
 - Adds assets under `app/src/main/assets/ccmobile/` (setup and launcher scripts, phone-control MCP server,
   musl loaders, translations) and resources prefixed `ccm_`.
@@ -18,7 +19,7 @@ Compared with upstream Termux, CCMobile:
 - `TerminalView`: public `scrollPage()` / `scrollToBottom()`.
 - `TermuxInstaller`: made public so the setup wizard can install the bootstrap.
 - `TermuxApplication`: initializes the UI language.
-- Build: optional NDK path via `ccm.ndk.dir`, release signing via `keystore.properties`, version 0.9.0.
+- Build: optional NDK path via `ccm.ndk.dir`, release signing via `keystore.properties`, version 0.9.1.
 
 The package name stays `com.termux` because Termux bootstrap binaries hard-code `/data/data/com.termux`.
 

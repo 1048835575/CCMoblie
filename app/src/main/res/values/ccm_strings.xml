@@ -18,4 +18,6 @@
     <string name="ccm_scroll_bottom">Scroll to bottom</string>
     <string name="ccm_scroll_toggle">Toggle page buttons</string>
     <string name="ccm_config">CCMobile settings</string>
+    <string name="ccm_a11y_label">CCMobile phone control</string>
+    <string name="ccm_a11y_description">Lets the AI in CCMobile read the screen, tap, type and swipe on this phone when you ask it to. It only acts during tasks you start, never sends data anywhere by itself, and refuses to operate banking and payment apps. Turn it off any time here.</string>
 </resources>

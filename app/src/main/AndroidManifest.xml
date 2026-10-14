@@ -256,7 +256,7 @@
         <activity
             android:name="com.termux.ccm.CcmPairActivity"
             android:exported="false"
-            android:label="连接手机"
+            android:label="手机控制"
             android:theme="@style/Theme.Ccm" />
 
         <receiver
@@ -274,6 +274,19 @@
             <meta-data
                 android:name="android.view.im"
                 android:resource="@xml/ccm_method" />
+        </service>
+
+        <service
+            android:name="com.termux.ccm.CcmA11yService"
+            android:exported="true"
+            android:label="@string/ccm_a11y_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/ccm_accessibility" />
         </service>
 
     </application>
