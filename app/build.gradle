@@ -45,8 +45,8 @@ android {
     defaultConfig {
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 1002 // CCMobile：高于 Termux 的 118，与之区分
-        versionName "0.9.2"
+        versionCode 1003 // CCMobile：高于 Termux 的 118，与之区分
+        versionName "0.9.3"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)

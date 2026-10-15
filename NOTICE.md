@@ -19,7 +19,7 @@ Compared with upstream Termux, CCMobile:
 - `TerminalView`: public `scrollPage()` / `scrollToBottom()`.
 - `TermuxInstaller`: made public so the setup wizard can install the bootstrap.
 - `TermuxApplication`: initializes the UI language.
-- Build: optional NDK path via `ccm.ndk.dir`, release signing via `keystore.properties`, version 0.9.2.
+- Build: optional NDK path via `ccm.ndk.dir`, release signing via `keystore.properties`, version 0.9.3.
 
 The package name stays `com.termux` because Termux bootstrap binaries hard-code `/data/data/com.termux`.
 

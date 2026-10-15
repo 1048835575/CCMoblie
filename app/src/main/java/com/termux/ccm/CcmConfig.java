@@ -378,6 +378,14 @@ public final class CcmConfig {
         return t.endsWith("## 用户习惯（可自行补充）") || t.endsWith("## User preferences (add your own)");
     }
 
+    /**
+     * 本机能否运行最新版（官方 musl 原生程序）：只支持 ARM64。x86_64（模拟器等）上安卓对应用的 seccomp
+     * 规则禁止 access 等旧系统调用，原生程序启动即被杀掉，只能用兼容版。
+     */
+    public static boolean nativeSupported() {
+        return android.os.Build.SUPPORTED_ABIS.length > 0 && "arm64-v8a".equals(android.os.Build.SUPPORTED_ABIS[0]);
+    }
+
     /** 本次对话实际运行的是否为原生最新版（选了最新版且已安装成功）。与 ccm-env 的选择逻辑一致。 */
     public static boolean runsLatest(Context context) {
         return isLatestChannel(context) && nativeVersion() != null;

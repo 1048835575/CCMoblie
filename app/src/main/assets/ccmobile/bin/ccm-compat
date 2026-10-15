@@ -1,0 +1,25 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# 安装兼容版 Claude Code（2.1.112，Node 运行）。
+# 默认只装最新版；最新版装不上、本机不支持（x86_64）或用户在设置里选了兼容版时才需要它。
+# 用法：ccm-compat [--quiet]   已安装则直接返回
+CCM_DIR="$HOME/.ccmobile"
+[ -f "$CCM_DIR/config.env" ] && . "$CCM_DIR/config.env"
+L() { if [ "$CCM_LANG" = "en" ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+
+CLI_JS="$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+[ -f "$CLI_JS" ] && exit 0
+
+case "${CCM_NPM_REGISTRY:-npmmirror}" in
+    npmmirror) REG="https://registry.npmmirror.com" ;;
+    *)         REG="https://registry.npmjs.org" ;;
+esac
+CC_VER="${CCM_CC_VERSION:-2.1.112}"
+echo "$(L "安装兼容版 Claude Code $CC_VER（registry: $REG）…" "Installing compatible Claude Code $CC_VER (registry: $REG)…")"
+# sharp 等可选原生依赖在 Android 上装不上，忽略即可
+npm install -g --no-fund --no-audit --omit=optional --registry "$REG" "@anthropic-ai/claude-code@$CC_VER" || {
+    echo "$(L "兼容版安装失败（npm install）" "Installing the compatible build failed (npm install)")"; exit 1; }
+if [ ! -f "$CLI_JS" ]; then
+    echo "$(L "@$CC_VER 不是纯 JS 版本（2.1.113 起改为原生二进制，无法用 Node 运行），请在设置里把兼容版版本号改回 2.1.112" "@$CC_VER is not a JS build (2.1.113+ ships native binaries); set the compatible version back to 2.1.112 in Settings")"
+    exit 1
+fi
+echo "$(L "兼容版 Claude Code $CC_VER 已安装" "Compatible Claude Code $CC_VER installed")"

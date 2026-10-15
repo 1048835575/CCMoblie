@@ -48,6 +48,10 @@ if [ "$CCM_CC_CHANNEL" = "latest" ]; then
         echo "$(L "最新版尚未安装成功，本次使用兼容版 2.1.112（可在设置中重试安装）" "Latest is not installed; using 2.1.112 this time (retry in Settings)")" >&2
     fi
 fi
+# 默认只装了最新版：需要用兼容版（最新版不可用 / 在设置里选了兼容版）但还没装时，先装上
+if [ "$CCM_RUNTIME" = "stable" ] && [ ! -f "$CCM_CLI" ]; then
+    bash "$CCM_DIR/bin/ccm-compat" >&2 || { echo "$(L "兼容版 Claude Code 安装失败，请检查网络后重试" "Failed to install the compatible Claude Code; check the network and retry")" >&2; exit 1; }
+fi
 export CCM_RUNTIME
 # 2.1.112 的自动模式只支持 Claude 官方模型：第三方模型下会悄悄退回逐条确认，因此改为完全放行
 if [ "$CCM_RUNTIME" = "stable" ] && [ "$CCM_PERMISSION_MODE" = "auto" ] && [ "$CCM_AUTH_MODE" != "subscription" ]; then

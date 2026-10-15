@@ -95,25 +95,24 @@ case "${CCM_NPM_REGISTRY:-npmmirror}" in
     *)         REG="https://registry.npmjs.org" ;;
 esac
 npm config set registry "$REG" >/dev/null
-CC_VER="${CCM_CC_VERSION:-2.1.112}"
-step 5 "$(L "安装 Claude Code $CC_VER" "Install Claude Code $CC_VER")"
-c_info "Claude Code @$CC_VER (registry: $REG)"
-# sharp 等可选原生依赖在 Android 上装不上，忽略即可
-npm install -g --no-fund --no-audit --omit=optional "@anthropic-ai/claude-code@$CC_VER" || fail "npm install claude-code"
 
-CLI_JS="$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-if [ ! -f "$CLI_JS" ]; then
-    c_err "$(L "警告：@$CC_VER 不是纯 JS 版本（2.1.113 起改为原生二进制，无法直接用 Node 运行）。" "Warning: @$CC_VER is not a JS build (2.1.113+ ships native binaries that Node cannot run).")"
-    fail "$(L "请在设置里把稳定版 Claude Code 版本号改回 2.1.112" "Set the stable Claude Code version back to 2.1.112 in Settings")"
-fi
-
-# 兼容版 2.1.112 始终保留，作为最新版不可用时的回退
-if [ "$CCM_CC_CHANNEL" = "latest" ]; then
+# 默认只装最新版（官方原生程序）；最新版装不上或本机不支持时，才装兼容版 2.1.112（Node 运行）。
+# 最新版只能在 ARM64 上运行：x86_64 安卓会用 seccomp 拦下它用到的旧系统调用。
+NATIVE_OK=0
+if [ "$CCM_CC_CHANNEL" = "latest" ] && [ "$(uname -m)" = "aarch64" ]; then
     step 5 "$(L "安装最新版 Claude Code（约 110MB）" "Install latest Claude Code (~110MB)")"
     # 新版本刚发布时镜像可能还没同步完，失败后等一会儿再试一次
-    if ! bash "$CCM_DIR/bin/ccm-native" install && ! { sleep 5; bash "$CCM_DIR/bin/ccm-native" install; }; then
-        c_err "$(L "最新版安装失败，将使用兼容版 2.1.112（自动模式改为完全放行）；可稍后在设置中重试" "Installing Latest failed; using 2.1.112 (auto mode becomes bypass). You can retry later in Settings")"
+    if bash "$CCM_DIR/bin/ccm-native" install || { sleep 5; bash "$CCM_DIR/bin/ccm-native" install; }; then
+        NATIVE_OK=1
+    else
+        c_err "$(L "最新版安装失败，改装兼容版 2.1.112（自动模式改为完全放行）；App 会在后台重试最新版" "Installing Latest failed; installing 2.1.112 instead (auto mode becomes bypass). The app will retry Latest in the background")"
     fi
+elif [ "$CCM_CC_CHANNEL" = "latest" ]; then
+    c_info "$(L "本机是 $(uname -m) 架构，最新版暂不支持，使用兼容版 2.1.112（自动模式改为完全放行）" "This device is $(uname -m); Latest isn't supported, using 2.1.112 (auto mode becomes bypass)")"
+fi
+if [ "$NATIVE_OK" = 0 ]; then
+    step 5 "$(L "安装兼容版 Claude Code ${CCM_CC_VERSION:-2.1.112}" "Install compatible Claude Code ${CCM_CC_VERSION:-2.1.112}")"
+    bash "$CCM_DIR/bin/ccm-compat" || fail "npm install claude-code"
 fi
 
 step 6 "$(L "写入配置" "Write configuration")"

@@ -225,7 +225,8 @@ public class CcmConfigActivity extends AppCompatActivity {
             CcmConfig.writeResolvConf(this);
             Toast.makeText(this, t("已保存，并更新了 settings.json"), Toast.LENGTH_SHORT).show();
             // 选了最新版但还没装：先安装；失败时暂用兼容版（完全放行），App 在后台自动重试
-            if (CcmConfig.isLatestChannel(this) && CcmConfig.nativeVersion() == null && CcmConfig.isEnvironmentInstalled()) {
+            if (CcmConfig.isLatestChannel(this) && CcmConfig.nativeVersion() == null && CcmConfig.isEnvironmentInstalled()
+                && CcmConfig.nativeSupported()) {
                 runNativeInstall(true);
                 return;
             }
@@ -283,7 +284,8 @@ public class CcmConfigActivity extends AppCompatActivity {
         String nv = CcmConfig.nativeVersion();
         boolean latest = CcmConfig.isLatestChannel(this);
         mCcStatus.setText(t("当前使用：") + (latest && nv != null ? t("最新版 ") + nv : t("兼容版 ") + CcmConfig.get(this, CcmConfig.KEY_CC_VERSION))
-            + (latest && nv == null ? t("（最新版尚未安装成功）") : "")
+            + (latest && nv == null ? (CcmConfig.nativeSupported() ? t("（最新版尚未安装成功）")
+                : t("（本机是 x86_64 设备，最新版暂不支持，自动使用兼容版）")) : "")
             + (nv != null ? t("\n已下载的最新版：") + nv : ""));
     }
 

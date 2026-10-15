@@ -184,8 +184,33 @@ public class CcmSetupActivity extends AppCompatActivity {
         tv.setTextColor(ContextCompat.getColor(this, colorRes));
     }
 
+    /**
+     * 安装包架构与设备不匹配时返回提示（否则 null）。典型情况：在 x86_64 模拟器 / 电脑安卓子系统上装了
+     * arm64-v8a 包，App 靠指令转译能运行，但解压出的 ARM 版 Linux 环境无法执行任何命令。
+     * ARM 32 位包装在 ARM 64 位手机上可以正常运行，不算不匹配。
+     */
+    private String abiMismatch() {
+        String libDir = getApplicationInfo().nativeLibraryDir;
+        String apk = libDir == null ? "" : libDir.substring(libDir.lastIndexOf('/') + 1); // arm64 / arm / x86_64 / x86
+        String device = android.os.Build.SUPPORTED_ABIS.length > 0 ? android.os.Build.SUPPORTED_ABIS[0] : "";
+        if (device.startsWith("x86") && apk.startsWith("arm")) {
+            return String.format(t("安装包是 %1$s 版，但这台设备是 %2$s，内置的 Linux 环境无法运行。\n请卸载后安装 %3$s 或 universal 版本。"),
+                apk, device, device.equals("x86_64") ? "x86_64" : "universal");
+        }
+        return null;
+    }
+
     private void startSetup() {
         if (isInstalling()) return;
+        String mismatch = abiMismatch();
+        if (mismatch != null) {
+            sSetupError = mismatch;
+            refresh();
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(t("安装包与设备不匹配")).setMessage(mismatch)
+                .setPositiveButton(t("知道了"), null).show();
+            return;
+        }
         mInstallButton.setEnabled(false);
         // 先解压内置的 Linux 环境（Termux bootstrap），完成后再跑安装脚本
         TermuxInstaller.setupBootstrapIfNeeded(this, () -> {

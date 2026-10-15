@@ -27,7 +27,7 @@
 
 ## 安装
 
-1. 从 [Releases](../../releases) 下载对应架构的 APK（大多数手机选 `arm64-v8a`）。
+1. 从 [Releases](../../releases) 下载对应架构的 APK（大多数手机选 `arm64-v8a`）。电脑上的安卓模拟器（MuMu、雷电、Android Studio 等）请选 `x86_64` 或 `universal`；模拟器上最新版 Claude Code 无法运行（安卓对 x86_64 应用的系统调用限制），会自动使用兼容版 2.1.112。
 2. **先卸载官方 Termux**：本应用包名同为 `com.termux`（Termux 预编译程序写死了该路径），二者不能共存。
 3. 打开 App，按引导完成：安装环境 → 登录或填写 API → 开启手机控制（可选，系统设置 → 无障碍 → CCMobile 手机控制）。
 
@@ -88,6 +88,6 @@ CCMobile runs the full **Claude Code** on Android: a built-in Linux environment 
 - Full Termux terminal; open the current session in interactive Claude Code; page-scroll buttons.
 - Chinese / English UI, following the system language on first launch.
 
-**Install**: download the APK for your architecture from [Releases](../../releases) (`arm64-v8a` for most phones). Uninstall the official Termux first — CCMobile keeps the `com.termux` package name (Termux binaries hard-code it), so they can't coexist.
+**Install**: download the APK for your architecture from [Releases](../../releases) (`arm64-v8a` for most phones; `x86_64` or `universal` for PC emulators such as MuMu or Android Studio, where Latest can't run and 2.1.112 is used). Uninstall the official Termux first — CCMobile keeps the `com.termux` package name (Termux binaries hard-code it), so they can't coexist.
 
 **Build**: see the commands above. **License**: GPLv3, based on Termux; see [NOTICE.md](NOTICE.md).

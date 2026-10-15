@@ -22,7 +22,9 @@ fi
 
 case "$(uname -m)" in
     aarch64|arm64) PKG="claude-code-linux-arm64-musl"; LD="ld-musl-aarch64.so.1" ;;
-    x86_64)        PKG="claude-code-linux-x64-musl";   LD="ld-musl-x86_64.so.1" ;;
+    # x86_64（模拟器、电脑上的安卓子系统）：安卓对 x86_64 应用的 seccomp 规则禁止 access 等旧系统调用，
+    # musl 版会被直接杀掉（Bad system call），所以不安装，使用兼容版 2.1.112
+    x86_64)        fail "$(L "最新版暂不支持 x86_64 设备（模拟器），将使用兼容版 2.1.112" "Latest isn't supported on x86_64 devices (emulators); using 2.1.112")" ;;
     *) fail "$(L "不支持的 CPU 架构 $(uname -m)" "Unsupported CPU architecture $(uname -m)")" ;;
 esac
 case "${CCM_NPM_REGISTRY:-npmmirror}" in

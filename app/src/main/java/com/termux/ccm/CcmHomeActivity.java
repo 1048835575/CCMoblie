@@ -175,7 +175,7 @@ public class CcmHomeActivity extends AppCompatActivity {
 
     /** 最新版通道：每 12 小时在后台检查一次更新；新版本下载并验证通过后才切换，下一轮对话生效。 */
     private void maybeAutoUpdateNative() {
-        if (!CcmConfig.isLatestChannel(this) || !CcmConfig.isEnvironmentInstalled()) return;
+        if (!CcmConfig.isLatestChannel(this) || !CcmConfig.isEnvironmentInstalled() || !CcmConfig.nativeSupported()) return;
         long last = CcmConfig.prefs(this).getLong("native_check_at", 0);
         // 已安装：每 12 小时检查更新；还没装成功（安装时网络或镜像出错）：最多每 30 分钟重试一次
         long interval = CcmConfig.nativeVersion() == null ? 30 * 60 * 1000L : 12 * 3600 * 1000L;

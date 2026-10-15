@@ -469,5 +469,8 @@
  "这是受保护的目录，不允许整体删除：": "This is a protected folder and can't be deleted: ",
  "\n暂时使用兼容版 2.1.112（自动模式改为完全放行），App 会在后台自动重试安装最新版。": "\nUsing 2.1.112 for now (auto mode becomes bypass); the app will retry installing Latest in the background.",
  "文件访问（~/storage/shared）": "File access (~/storage/shared)",
- "允许访问文件": "Allow file access"
+ "允许访问文件": "Allow file access",
+ "安装包是 %1$s 版，但这台设备是 %2$s，内置的 Linux 环境无法运行。\n请卸载后安装 %3$s 或 universal 版本。": "This package is the %1$s build, but this device is %2$s, so the bundled Linux environment can't run.\nUninstall it and install the %3$s or universal build.",
+ "安装包与设备不匹配": "Package doesn't match this device",
+ "（本机是 x86_64 设备，最新版暂不支持，自动使用兼容版）": " (this is an x86_64 device; Latest isn't supported, using the compatible build)"
 }
