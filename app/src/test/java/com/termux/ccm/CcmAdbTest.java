@@ -1,17 +1,18 @@
 package com.termux.ccm;
 
-import android.app.Application;
-
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
-/** 使用空 Application：TermuxApplication 会按系统语言加载译文，测试断言的是中文原文。 */
 @RunWith(RobolectricTestRunner.class)
-@Config(application = Application.class)
 public class CcmAdbTest {
+
+    @Before
+    public void useChinese() {
+        CcmTestLocale.useChinese();
+    }
 
     @Test
     public void testIsConnectedMessage() {

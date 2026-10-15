@@ -1,7 +1,5 @@
 package com.termux.ccm;
 
-import android.app.Application;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -10,15 +8,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** 使用空 Application：TermuxApplication 会按系统语言加载译文，测试断言的是中文原文。 */
 @RunWith(RobolectricTestRunner.class)
-@Config(application = Application.class)
 public class CcmTaskStateTest {
 
     private final AtomicInteger mStops = new AtomicInteger();
@@ -27,6 +22,7 @@ public class CcmTaskStateTest {
 
     @Before
     public void setUp() {
+        CcmTestLocale.useChinese();
         CcmTaskState.begin("demo", "/proj", "sess-1", "do it", mStops::incrementAndGet);
         CcmTaskState.addListener(mListener);
     }

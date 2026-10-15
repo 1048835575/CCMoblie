@@ -1,29 +1,30 @@
 package com.termux.ccm;
 
-import android.app.Application;
-
 import com.termux.shared.termux.TermuxConstants;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 
-/** 使用空 Application：TermuxApplication 会按系统语言加载译文，测试断言的是中文原文。 */
 @RunWith(RobolectricTestRunner.class)
-@Config(application = Application.class)
 public class CcmProjectsTest {
+
+    @Before
+    public void useChinese() {
+        CcmTestLocale.useChinese();
+    }
 
     @Rule
     public TemporaryFolder mTmp = new TemporaryFolder();

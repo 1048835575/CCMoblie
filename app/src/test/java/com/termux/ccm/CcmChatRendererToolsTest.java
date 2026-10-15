@@ -1,21 +1,22 @@
 package com.termux.ccm;
 
-import android.app.Application;
-
 import com.termux.shared.termux.TermuxConstants;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
-/** 使用空 Application：TermuxApplication 会按系统语言加载译文，测试断言的是中文原文。 */
 @RunWith(RobolectricTestRunner.class)
-@Config(application = Application.class)
 public class CcmChatRendererToolsTest {
+
+    @Before
+    public void useChinese() {
+        CcmTestLocale.useChinese();
+    }
 
     private static final String HOME = TermuxConstants.TERMUX_HOME_DIR_PATH;
 
