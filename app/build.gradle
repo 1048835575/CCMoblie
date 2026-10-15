@@ -135,6 +135,11 @@ android {
     testOptions {
         unitTests {
             includeAndroidResources = true
+            all {
+                testLogging {
+                    exceptionFormat "full"
+                }
+            }
         }
     }
 
