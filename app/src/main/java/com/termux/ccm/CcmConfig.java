@@ -42,7 +42,10 @@ public final class CcmConfig {
     public static final String KEY_APT_MIRROR = "apt_mirror";
     public static final String KEY_NPM_REGISTRY = "npm_registry";
     public static final String KEY_CC_VERSION = "cc_version";
-    /** Claude Code 版本通道：stable（固定 2.1.112，Node 运行）/ latest（原生最新版，实验性，自动更新） */
+    /**
+     * Claude Code 版本通道：latest（默认，原生最新版，自动更新）/ stable（固定 2.1.112，Node 运行）。
+     * 2.1.112 的自动模式只支持 Claude 官方模型，第三方模型下会退回逐条确认，所以默认用最新版。
+     */
     public static final String KEY_CC_CHANNEL = "cc_channel";
     /** 最新版（musl）在读不到系统 DNS 时使用的公共 DNS，最长 9 个字符 */
     public static final String KEY_NATIVE_DNS = "native_dns";
@@ -105,7 +108,7 @@ public final class CcmConfig {
             case KEY_APT_MIRROR: return p.getString(key, "tuna");
             case KEY_NPM_REGISTRY: return p.getString(key, "npmmirror");
             case KEY_CC_VERSION: return p.getString(key, DEFAULT_CC_VERSION);
-            case KEY_CC_CHANNEL: return p.getString(key, "stable");
+            case KEY_CC_CHANNEL: return p.getString(key, "latest");
             case KEY_AUTH_MODE: return p.getString(key, "api");
             case KEY_SUB_MODEL: return p.getString(key, "sonnet");
             case KEY_SUB_MODELS: return p.getString(key, "sonnet,opus,haiku");
@@ -166,8 +169,21 @@ public final class CcmConfig {
         return new File(CCM_DIR, ".installed").exists();
     }
 
+    /**
+     * 0.9.1 及以前默认兼容版 2.1.112，保存设置时会把它写进配置，几乎所有老用户都存着 stable。
+     * 0.9.2 起默认最新版：老配置一次性改为 latest（装不上时运行时仍会回退兼容版）。
+     */
+    private static void migrateChannel(Context context) {
+        SharedPreferences p = prefs(context);
+        if (p.getBoolean("channel_migrated_092", false)) return;
+        SharedPreferences.Editor e = p.edit().putBoolean("channel_migrated_092", true);
+        if ("stable".equals(p.getString(KEY_CC_CHANNEL, null))) e.putString(KEY_CC_CHANNEL, "latest");
+        e.apply();
+    }
+
     /** 每次 App 启动时调用：释放脚本、写 profile 钩子和配置。很快，可在主线程调用。 */
     public static void installAssets(Context context) {
+        migrateChannel(context);
         try {
             copyAssetDir(context.getAssets(), ASSET_ROOT, CCM_DIR);
             File bin = new File(CCM_DIR, "bin");
@@ -324,6 +340,8 @@ public final class CcmConfig {
             root.put("modelSettings", new JSONObject().put(bare, new JSONObject().put("effortLevel", get(context, KEY_EFFORT))));
         }
         root.put("skipAutoPermissionPrompt", true);
+        // 2.1.112 回退为完全放行时，终端里的交互式会话不再弹出一次性的风险确认
+        root.put("skipDangerousModePermissionPrompt", true);
         root.put("autoMode", new JSONObject().put("allow", new JSONArray().put("*")));
         root.put("model", model);
         writeString(file, root.toString(2).replace("\\/", "/"));
@@ -354,11 +372,24 @@ public final class CcmConfig {
         }
     }
 
-    /** 0.9.0 的旧模板（无线调试为主），用户未补充内容时升级为新模板 */
+    /** 旧版本的模板：用户没有在末尾「用户习惯」里补充内容时，随 App 升级为新模板 */
     private static boolean isOldTemplate(String cur) {
         String t = cur.trim();
-        boolean untouched = t.endsWith("## 用户习惯（可自行补充）") || t.endsWith("## User preferences (add your own)");
-        return untouched && (t.contains("里重新连接 / 配对") || t.contains("reconnect / pair under"));
+        return t.endsWith("## 用户习惯（可自行补充）") || t.endsWith("## User preferences (add your own)");
+    }
+
+    /** 本次对话实际运行的是否为原生最新版（选了最新版且已安装成功）。与 ccm-env 的选择逻辑一致。 */
+    public static boolean runsLatest(Context context) {
+        return isLatestChannel(context) && nativeVersion() != null;
+    }
+
+    /**
+     * 实际生效的权限模式：在 2.1.112 上用第三方模型时自动模式不可用（会退回逐条确认），
+     * 此时改为完全放行。与 ccm-env 中的降级规则一致。
+     */
+    public static String effectivePermissionMode(Context context, String mode) {
+        if ("auto".equals(mode) && !isSubscription(context) && !runsLatest(context)) return "bypassPermissions";
+        return mode;
     }
 
     public static boolean isLatestChannel(Context context) {

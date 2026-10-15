@@ -24,8 +24,8 @@ export SHELL="$PREFIX/bin/bash"
 export USE_BUILTIN_RIPGREP=0
 
 # 运行方式：CCM_RUN 为启动 Claude Code 的命令前缀
-#   稳定版：node 运行 2.1.112 的 cli.js
-#   最新版（实验）：经适配过的 musl 加载器运行原生版；不可用时自动回退稳定版
+#   最新版（默认）：经适配过的 musl 加载器运行原生版
+#   兼容版：node 运行 2.1.112 的 cli.js；最新版不可用时自动回退到它
 CCM_CLI="$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js"
 CCM_RUN=(node "$CCM_CLI")
 CCM_RUNTIME="stable"
@@ -45,10 +45,14 @@ if [ "$CCM_CC_CHANNEL" = "latest" ]; then
         CCM_RUN=("$NAT/ld-musl.so.1" "$NAT/current/claude")
         CCM_RUNTIME="latest"
     else
-        echo "$(L "最新版尚未安装成功，本次使用稳定版 2.1.112（可在设置中重试安装）" "Latest is not installed; using Stable 2.1.112 this time (retry in Settings)")" >&2
+        echo "$(L "最新版尚未安装成功，本次使用兼容版 2.1.112（可在设置中重试安装）" "Latest is not installed; using 2.1.112 this time (retry in Settings)")" >&2
     fi
 fi
 export CCM_RUNTIME
+# 2.1.112 的自动模式只支持 Claude 官方模型：第三方模型下会悄悄退回逐条确认，因此改为完全放行
+if [ "$CCM_RUNTIME" = "stable" ] && [ "$CCM_PERMISSION_MODE" = "auto" ] && [ "$CCM_AUTH_MODE" != "subscription" ]; then
+    CCM_PERMISSION_MODE=bypassPermissions
+fi
 CCM_ARGS=(--mcp-config "$CCM_DIR/mcp.json")
 if [ -n "$CCM_MODEL" ]; then
     export ANTHROPIC_MODEL="$CCM_MODEL"

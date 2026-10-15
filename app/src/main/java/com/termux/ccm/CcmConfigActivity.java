@@ -55,7 +55,7 @@ public class CcmConfigActivity extends AppCompatActivity {
     private static final String[] AUTH_MODE_LABELS = {t("API Key（DeepSeek 等第三方 / Anthropic API）"), t("Claude 订阅账号（Pro / Max）")};
     private static final String REPO_URL = "https://github.com/1048835575/CCMoblie";
     private static final String[] CHANNELS = {"stable", "latest"};
-    private static final String[] CHANNEL_LABELS = {t("稳定版（2.1.112）"), t("最新版（实验性，自动更新）")};
+    private static final String[] CHANNEL_LABELS = {t("兼容版（2.1.112）"), t("最新版（推荐，自动更新）")};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -128,7 +128,7 @@ public class CcmConfigActivity extends AppCompatActivity {
         mChannelSpinner = spinner(ver, t("运行版本"), CHANNEL_LABELS, CHANNELS, CcmConfig.get(this, CcmConfig.KEY_CC_CHANNEL));
         mCcStatus = ui.hint(ver, "");
         ui.hint(ver, t("最新版是官方原生程序（约 110MB），通过内置的 musl 加载器在 Android 上运行，App 会每天检查并自动更新。")
-            + t("出现问题时切回稳定版即可，稳定版始终保留。"));
+            + t("最新版装不上时自动使用兼容版 2.1.112；兼容版对第三方模型不支持自动模式，会改为完全放行。"));
         mDnsSpinner = spinner(ver, t("最新版备用 DNS（读不到当前网络 DNS 时使用）"), CcmConfig.NATIVE_DNS_CHOICES,
             CcmConfig.NATIVE_DNS_CHOICES, CcmConfig.get(this, CcmConfig.KEY_NATIVE_DNS));
         ui.outlined(ver, t("立即安装 / 检查更新最新版"), v -> {
@@ -169,8 +169,8 @@ public class CcmConfigActivity extends AppCompatActivity {
         LinearLayout src = ui.card(c);
         mAptSpinner = spinner(src, t("Termux 软件源"), APT_MIRROR_LABELS, APT_MIRRORS, CcmConfig.get(this, CcmConfig.KEY_APT_MIRROR));
         mNpmSpinner = spinner(src, t("npm 源"), NPM_REGISTRY_LABELS, NPM_REGISTRIES, CcmConfig.get(this, CcmConfig.KEY_NPM_REGISTRY));
-        field(src, CcmConfig.KEY_CC_VERSION, t("稳定版 Claude Code 版本号"), false);
-        ui.hint(src, t("稳定版通过 Node 运行，2.1.113 起官方 npm 包不再包含 JS 版本，请保持 ") + CcmConfig.DEFAULT_CC_VERSION + t("。"));
+        field(src, CcmConfig.KEY_CC_VERSION, t("兼容版 Claude Code 版本号"), false);
+        ui.hint(src, t("兼容版通过 Node 运行，2.1.113 起官方 npm 包不再包含 JS 版本，请保持 ") + CcmConfig.DEFAULT_CC_VERSION + t("。"));
         ui.outlined(src, t("重新安装开发环境"), v -> {
             new File(CcmConfig.CCM_DIR, ".installed").delete();
             startActivity(new Intent(this, CcmSetupActivity.class));
@@ -224,7 +224,7 @@ public class CcmConfigActivity extends AppCompatActivity {
             CcmConfig.writeEnv(this);
             CcmConfig.writeResolvConf(this);
             Toast.makeText(this, t("已保存，并更新了 settings.json"), Toast.LENGTH_SHORT).show();
-            // 选了最新版但还没装：先安装，失败自动回退稳定版
+            // 选了最新版但还没装：先安装；失败时暂用兼容版（完全放行），App 在后台自动重试
             if (CcmConfig.isLatestChannel(this) && CcmConfig.nativeVersion() == null && CcmConfig.isEnvironmentInstalled()) {
                 runNativeInstall(true);
                 return;
@@ -282,13 +282,16 @@ public class CcmConfigActivity extends AppCompatActivity {
     private void refreshCcStatus() {
         String nv = CcmConfig.nativeVersion();
         boolean latest = CcmConfig.isLatestChannel(this);
-        mCcStatus.setText(t("当前使用：") + (latest && nv != null ? t("最新版 ") + nv : t("稳定版 ") + CcmConfig.get(this, CcmConfig.KEY_CC_VERSION))
+        mCcStatus.setText(t("当前使用：") + (latest && nv != null ? t("最新版 ") + nv : t("兼容版 ") + CcmConfig.get(this, CcmConfig.KEY_CC_VERSION))
             + (latest && nv == null ? t("（最新版尚未安装成功）") : "")
             + (nv != null ? t("\n已下载的最新版：") + nv : ""));
     }
 
-    /** 运行 ccm-native 安装 / 更新最新版，弹窗显示实时日志。revertOnFail：失败时把版本切回稳定版。 */
-    private void runNativeInstall(boolean revertOnFail) {
+    /**
+     * 运行 ccm-native 安装 / 更新最新版，弹窗显示实时日志。
+     * afterSave：保存设置时触发的安装；失败也不改用户选的通道，只是暂用兼容版，后台会自动重试。
+     */
+    private void runNativeInstall(boolean afterSave) {
         if (!CcmConfig.isEnvironmentInstalled()) {
             Toast.makeText(this, t("请先完成开发环境安装"), Toast.LENGTH_LONG).show();
             return;
@@ -318,16 +321,11 @@ public class CcmConfigActivity extends AppCompatActivity {
                 @Override public void onExit(int code) {
                     runOnUiThread(() -> {
                         boolean ok = code == 0 && result[0] != null && !result[0].isEmpty();
-                        if (!ok && revertOnFail) {
-                            CcmConfig.prefs(CcmConfigActivity.this).edit().putString(CcmConfig.KEY_CC_CHANNEL, "stable").apply();
-                            try { CcmConfig.writeEnv(CcmConfigActivity.this); } catch (Exception ignored) {}
-                            mChannelSpinner.setSelection(0);
-                        }
                         if (!isFinishing()) {
                             refreshCcStatus();
                             dialog.setTitle(ok ? t("最新版已就绪：") + result[0] : t("安装失败"));
                             log.setText(sb + (ok ? t("\n下一轮对话起生效。") : "\n" + (result[1] == null ? t("请查看上面的日志") : result[1])
-                                + (revertOnFail ? t("\n已切回稳定版 2.1.112。") : "")));
+                                + (afterSave ? t("\n暂时使用兼容版 2.1.112（自动模式改为完全放行），App 会在后台自动重试安装最新版。") : "")));
                             dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setText(t("完成"));
                         }
                     });

@@ -33,7 +33,8 @@ public class CcmSetupActivity extends AppCompatActivity {
     private CcmUi ui;
     private TextView mEnvStatus, mApiStatus, mPhoneStatus, mStepText, mLog;
     private ProgressBar mProgress;
-    private MaterialButton mInstallButton, mStartButton;
+    private MaterialButton mInstallButton, mStartButton, mStorageButton;
+    private TextView[] mStorageRow;
     private volatile boolean mPhoneConnected;
 
     public static boolean bootstrapInstalled() {
@@ -72,7 +73,9 @@ public class CcmSetupActivity extends AppCompatActivity {
         // 1. 环境
         LinearLayout c1 = ui.card(c);
         mEnvStatus = ui.stepHeader(c1, 1, t("安装开发环境"));
-        ui.hint(c1, t("Linux 环境 + Node.js + adb + Claude Code ") + CcmConfig.get(this, CcmConfig.KEY_CC_VERSION) + t("，约 1~10 分钟，需联网。"));
+        ui.hint(c1, t("Linux 环境 + Node.js + adb + Claude Code ")
+            + (CcmConfig.isLatestChannel(this) ? t("最新版") : CcmConfig.get(this, CcmConfig.KEY_CC_VERSION))
+            + t("，约 1~10 分钟，需联网。"));
         mProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         mProgress.setMax(100);
         mProgress.setProgressTintList(ContextCompat.getColorStateList(this, R.color.ccm_accent));
@@ -86,6 +89,9 @@ public class CcmSetupActivity extends AppCompatActivity {
         mLog.setMaxLines(30);
         mLog.setVisibility(View.GONE);
         toggle.setOnClickListener(v -> mLog.setVisibility(mLog.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+        // 共享存储（等同 termux-setup-storage）：提前授权，装好环境后自动建立 ~/storage 链接
+        mStorageRow = ui.statusRow(c1, t("文件访问（~/storage/shared）"));
+        mStorageButton = ui.outlined(c1, t("允许访问文件"), v -> CcmStorage.request(this));
 
         // 2. 模型
         LinearLayout c2 = ui.card(c);
@@ -110,6 +116,8 @@ public class CcmSetupActivity extends AppCompatActivity {
         if (savedInstanceState == null && !CcmConfig.isEnvironmentInstalled() && !isInstalling() && sSetupError == null) {
             startSetup();
         }
+        // 安装进行中顺便申请文件访问权限，不用等用户进终端执行 termux-setup-storage
+        if (savedInstanceState == null) CcmStorage.requestOnce(this);
     }
 
     @Override
@@ -125,6 +133,20 @@ public class CcmSetupActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         sUiRefresh = null;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        CcmStorage.onPermissionResult(this, requestCode);
+        refresh();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        CcmStorage.onPermissionResult(this, requestCode);
+        refresh();
     }
 
     private void refresh() {
@@ -149,6 +171,10 @@ public class CcmSetupActivity extends AppCompatActivity {
         setStatus(mApiStatus, api ? "✓ " + (CcmConfig.isSubscription(this) ? t("Claude 订阅 · ") : "") + CcmConfig.mainModel(this) : (CcmConfig.isSubscription(this) ? t("未登录") : t("未填写")),
             api ? R.color.ccm_ok : R.color.ccm_text_secondary);
         setStatus(mPhoneStatus, mPhoneConnected ? t("✓ 已开启") : t("未开启"), mPhoneConnected ? R.color.ccm_ok : R.color.ccm_text_secondary);
+        boolean storage = CcmStorage.isGranted(this);
+        ui.setStatus(mStorageRow, storage, storage ? t("已允许") : t("未允许"));
+        mStorageButton.setVisibility(storage ? View.GONE : View.VISIBLE);
+        if (env) CcmStorage.ensureLinks(this);
         mStartButton.setEnabled(env && api);
         mStartButton.setText(env && api ? t("开始使用") : t("完成第 1、2 步后开始使用"));
     }

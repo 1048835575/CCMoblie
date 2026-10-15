@@ -107,11 +107,12 @@ if [ ! -f "$CLI_JS" ]; then
     fail "$(L "请在设置里把稳定版 Claude Code 版本号改回 2.1.112" "Set the stable Claude Code version back to 2.1.112 in Settings")"
 fi
 
-# 稳定版始终保留，作为最新版不可用时的回退
+# 兼容版 2.1.112 始终保留，作为最新版不可用时的回退
 if [ "$CCM_CC_CHANNEL" = "latest" ]; then
-    step 5 "$(L "安装最新版 Claude Code（实验性，约 110MB）" "Install latest Claude Code (experimental, ~110MB)")"
-    if ! bash "$CCM_DIR/bin/ccm-native" install; then
-        c_err "$(L "最新版安装失败，将使用稳定版 2.1.112；可稍后在设置中重试" "Installing Latest failed; using Stable 2.1.112. You can retry later in Settings")"
+    step 5 "$(L "安装最新版 Claude Code（约 110MB）" "Install latest Claude Code (~110MB)")"
+    # 新版本刚发布时镜像可能还没同步完，失败后等一会儿再试一次
+    if ! bash "$CCM_DIR/bin/ccm-native" install && ! { sleep 5; bash "$CCM_DIR/bin/ccm-native" install; }; then
+        c_err "$(L "最新版安装失败，将使用兼容版 2.1.112（自动模式改为完全放行）；可稍后在设置中重试" "Installing Latest failed; using 2.1.112 (auto mode becomes bypass). You can retry later in Settings")"
     fi
 fi
 

@@ -110,6 +110,8 @@ public class CcmHomeActivity extends AppCompatActivity {
             CcmConfig.installAssets(this);
             CcmProjects.PROJECTS_ROOT.mkdirs();
             maybeAutoUpdateNative();
+            // 提前授权共享存储（等同 termux-setup-storage），老用户升级后也只问一次
+            CcmStorage.requestOnce(this);
         }
 
         mDrawer = findViewById(R.id.drawer);
@@ -168,16 +170,19 @@ public class CcmHomeActivity extends AppCompatActivity {
     /** 当前实际使用的 Claude Code 版本（与 ccm-env 的选择逻辑一致）。 */
     private String runtimeVersion() {
         String nv = CcmConfig.nativeVersion();
-        return CcmConfig.isLatestChannel(this) && nv != null ? nv : CcmConfig.get(this, CcmConfig.KEY_CC_VERSION);
+        return CcmConfig.runsLatest(this) ? nv : CcmConfig.get(this, CcmConfig.KEY_CC_VERSION);
     }
 
     /** 最新版通道：每 12 小时在后台检查一次更新；新版本下载并验证通过后才切换，下一轮对话生效。 */
     private void maybeAutoUpdateNative() {
         if (!CcmConfig.isLatestChannel(this) || !CcmConfig.isEnvironmentInstalled()) return;
         long last = CcmConfig.prefs(this).getLong("native_check_at", 0);
-        if (System.currentTimeMillis() - last < 12 * 3600 * 1000L) return;
+        // 已安装：每 12 小时检查更新；还没装成功（安装时网络或镜像出错）：最多每 30 分钟重试一次
+        long interval = CcmConfig.nativeVersion() == null ? 30 * 60 * 1000L : 12 * 3600 * 1000L;
+        if (System.currentTimeMillis() - last < interval) return;
         CcmConfig.prefs(this).edit().putLong("native_check_at", System.currentTimeMillis()).apply();
         final String[] updated = {null};
+        final boolean hadNative = CcmConfig.nativeVersion() != null;
         try {
             CcmProcess.start(getApplicationContext(), null, null, new CcmProcess.Listener() {
                 @Override public void onLine(String line) {
@@ -185,8 +190,10 @@ public class CcmHomeActivity extends AppCompatActivity {
                 }
 
                 @Override public void onExit(int code) {
+                    if (updated[0] == null && !hadNative && CcmConfig.nativeVersion() != null) updated[0] = CcmConfig.nativeVersion();
                     if (updated[0] == null) return;
                     runOnUiThread(() -> {
+                        updateChips();
                         toast(t("Claude Code 已自动更新到 ") + updated[0] + t("，下一轮对话生效"));
                         updateEmptyState();
                     });
@@ -487,13 +494,8 @@ public class CcmHomeActivity extends AppCompatActivity {
                 p.name, CcmProjects.displayPath(p.path), p.path.equals(mProject.path));
             item.setOnClickListener(v -> { sheet.dismiss(); switchProject(p, true); });
             if (!p.isPhoneWorkspace()) item.setOnLongClickListener(v -> {
-                new MaterialAlertDialogBuilder(this).setTitle(t("移除项目"))
-                    .setMessage(t("从列表移除「") + p.name + t("」？文件夹本身不会被删除。"))
-                    .setPositiveButton(t("移除"), (d, w) -> {
-                        CcmProjects.remove(this, p);
-                        sheet.dismiss();
-                        switchProject(CcmProjects.current(this), true);
-                    }).setNegativeButton(t("取消"), null).show();
+                sheet.dismiss();
+                showProjectActions(p);
                 return true;
             });
         }
@@ -503,6 +505,108 @@ public class CcmHomeActivity extends AppCompatActivity {
         open.setOnClickListener(v -> { sheet.dismiss(); openFolderPicker(); });
         sheet.setContentView(wrapSheet(col));
         sheet.show();
+    }
+
+    // ---------------- 项目操作：移除 / 彻底删除 ----------------
+
+    private void showProjectActions(CcmProjects.Project p) {
+        BottomSheetDialog sheet = new BottomSheetDialog(this);
+        LinearLayout col = sheetColumn(p.name);
+        View remove = sheetItem(col, R.drawable.ccm_ic_close, t("从列表移除"), t("文件夹保留在手机上，可随时重新打开"), false);
+        remove.setOnClickListener(v -> { sheet.dismiss(); removeProject(p); });
+        View del = sheetItem(col, R.drawable.ccm_ic_delete, t("彻底删除文件夹"),
+            CcmProjects.displayPath(p.path) + t("  ·  不可恢复"), false);
+        ((ImageView) del.findViewWithTag("icon")).setImageTintList(ContextCompat.getColorStateList(this, R.color.ccm_error));
+        del.setOnClickListener(v -> { sheet.dismiss(); confirmDeleteProject(p); });
+        sheet.setContentView(wrapSheet(col));
+        sheet.show();
+    }
+
+    private void removeProject(CcmProjects.Project p) {
+        if (isRunning() && p.path.equals(mProject.path)) { toast(t("请先停止当前任务")); return; }
+        boolean wasCurrent = p.path.equals(mProject.path);
+        CcmProjects.remove(this, p);
+        if (wasCurrent) switchProject(CcmProjects.current(this), true);
+        Snackbar.make(findViewById(R.id.composer), t("已从列表移除「") + p.name + t("」"), Snackbar.LENGTH_LONG)
+            .setAnchorView(R.id.composer)
+            .setAction(t("撤销"), v -> {
+                CcmProjects.add(this, p.name, p.path);
+                if (wasCurrent) switchProject(CcmProjects.current(this), true);
+            }).show();
+    }
+
+    /** 彻底删除：先做安全检查和统计，再要求输入文件夹名确认。 */
+    private void confirmDeleteProject(CcmProjects.Project p) {
+        if (isRunning() && p.path.equals(mProject.path)) { toast(t("请先停止当前任务")); return; }
+        String refusal = CcmProjects.deleteRefusal(p);
+        if (refusal != null) {
+            new MaterialAlertDialogBuilder(this).setTitle(t("不能删除")).setMessage(refusal)
+                .setPositiveButton(t("知道了"), null).show();
+            return;
+        }
+        File dir = new File(p.path);
+        new Thread(() -> {
+            long[] m = CcmProjects.measure(dir);
+            runOnUiThread(() -> showDeleteProjectDialog(p, dir, m));
+        }).start();
+    }
+
+    private void showDeleteProjectDialog(CcmProjects.Project p, File dir, long[] m) {
+        String folder = dir.getName();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(24 * mDp, 8 * mDp, 24 * mDp, 0);
+        EditText confirm = new EditText(this);
+        confirm.setSingleLine(true);
+        confirm.setHint(folder);
+        box.addView(confirm);
+        android.widget.CheckBox sessions = new android.widget.CheckBox(this);
+        sessions.setText(t("同时删除这个项目的对话记录"));
+        sessions.setChecked(true);
+        box.addView(sessions);
+        String size = m[1] >= 1 << 20 ? String.format(java.util.Locale.ROOT, "%.1f MB", m[1] / 1048576.0)
+            : String.format(java.util.Locale.ROOT, "%.1f KB", m[1] / 1024.0);
+        androidx.appcompat.app.AlertDialog d = new MaterialAlertDialogBuilder(this)
+            .setTitle(t("彻底删除「") + p.name + t("」？"))
+            .setMessage(CcmProjects.displayPath(p.path) + "\n"
+                + String.format(t("共 %1$d 个文件，%2$s。"), m[0], size)
+                + t("\n文件夹会被永久删除，无法恢复。\n\n请输入文件夹名「") + folder + t("」确认："))
+            .setView(box)
+            .setNegativeButton(t("取消"), null)
+            .setPositiveButton(t("彻底删除"), null)
+            .create();
+        d.setOnShowListener(x -> {
+            android.widget.Button ok = d.getButton(android.content.DialogInterface.BUTTON_POSITIVE);
+            ok.setEnabled(false);
+            ok.setTextColor(ContextCompat.getColor(this, R.color.ccm_error));
+            confirm.addTextChangedListener(new android.text.TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+                @Override public void afterTextChanged(android.text.Editable s) {
+                    ok.setEnabled(s.toString().trim().equals(folder));
+                }
+            });
+            ok.setOnClickListener(v -> {
+                d.dismiss();
+                deleteProject(p, sessions.isChecked());
+            });
+        });
+        d.show();
+    }
+
+    private void deleteProject(CcmProjects.Project p, boolean withSessions) {
+        boolean wasCurrent = p.path.equals(mProject.path);
+        if (wasCurrent) newChat();
+        toast(t("正在删除…"));
+        new Thread(() -> {
+            int failed = CcmProjects.deleteProject(this, p, withSessions);
+            runOnUiThread(() -> {
+                if (wasCurrent) switchProject(CcmProjects.current(this), true);
+                else loadSessionList();
+                toast(failed == 0 ? t("已彻底删除「") + p.name + t("」")
+                    : String.format(t("删除完成，但有 %d 个文件删不掉（可能没有权限）"), failed));
+            });
+        }).start();
     }
 
     private void createProjectDialog() {
@@ -603,7 +707,9 @@ public class CcmHomeActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        CcmStorage.onPermissionResult(this, requestCode);
         if (requestCode == REQ_STORAGE) {
+            if (hasStoragePermission()) CcmStorage.ensureLinks(this);
             if (hasStoragePermission()) showFolder(Environment.getExternalStorageDirectory());
             else toast(t("未获得存储权限，无法浏览内部存储"));
         }
@@ -613,7 +719,9 @@ public class CcmHomeActivity extends AppCompatActivity {
 
     private void updateChips() {
         String mode = CcmConfig.prefs(this).getString("chat_mode", CcmConfig.get(this, CcmConfig.KEY_PERMISSION_MODE));
-        mChipMode.setText(modeLabel(mode) + " ▾");
+        String effective = CcmConfig.effectivePermissionMode(this, mode);
+        // 最新版不可用、回退 2.1.112 时自动模式降为完全放行，标签显示实际模式（版本号见空白页的版本信息）
+        mChipMode.setText(modeLabel(effective) + " ▾");
         String model = currentModel();
         mChipModel.setText(model.replace("[1m]", "") + " ▾");
         updateEmptyState();
@@ -725,6 +833,7 @@ public class CcmHomeActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        CcmStorage.onPermissionResult(this, requestCode);
         if (requestCode != REQ_PICK_IMAGES || resultCode != RESULT_OK || data == null) return;
         List<Uri> uris = new ArrayList<>();
         if (data.getClipData() != null) {

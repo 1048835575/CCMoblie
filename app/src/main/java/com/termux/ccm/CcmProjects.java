@@ -116,6 +116,99 @@ public final class CcmProjects {
         if (current(context).path.equals(target.path)) setCurrent(context, list(context).get(0));
     }
 
+    // ---------------- 彻底删除项目文件夹 ----------------
+
+    /** 一级目录名：内部存储根目录下的这些系统文件夹本身不允许整体删除（其中的子文件夹可以）。 */
+    private static final String[] SHARED_TOP_DIRS = {"Android", "DCIM", "Download", "Documents", "Pictures", "Movies",
+        "Music", "Alarms", "Notifications", "Podcasts", "Ringtones", "Audiobooks", "Recordings", "MIUI"};
+
+    /**
+     * 删除前的安全检查：可删除返回 null，否则返回拒绝原因。
+     * 受保护：根目录、App 自身的各级目录及其上级、内部存储根目录和其中的系统文件夹。
+     */
+    public static String deleteRefusal(Project p) {
+        if (p.isPhoneWorkspace()) return t("手机助手工作区不能删除");
+        File dir = new File(p.path);
+        if (!dir.isDirectory()) return t("文件夹不存在或已被删除");
+        String target;
+        try {
+            target = dir.getCanonicalPath();
+        } catch (Exception e) {
+            return t("无法解析文件夹路径");
+        }
+        if (target.split("/").length < 4) return t("路径层级太浅，可能是系统目录，不允许删除");
+        List<String> guarded = new ArrayList<>();
+        for (String s : new String[]{"/", "/data", "/data/data", "/data/user/0", "/storage", "/storage/emulated",
+            "/storage/emulated/0", "/sdcard", TermuxConstants.TERMUX_FILES_DIR_PATH, TermuxConstants.TERMUX_HOME_DIR_PATH,
+            TermuxConstants.TERMUX_PREFIX_DIR_PATH, CcmConfig.CCM_DIR.getPath(), PROJECTS_ROOT.getPath(),
+            TermuxConstants.TERMUX_HOME_DIR_PATH + "/.claude", TermuxConstants.TERMUX_HOME_DIR_PATH + "/storage"}) {
+            guarded.add(s);
+        }
+        for (String d : SHARED_TOP_DIRS) guarded.add("/storage/emulated/0/" + d);
+        for (String g : guarded) {
+            String c;
+            try { c = new File(g).getCanonicalPath(); } catch (Exception e) { c = g; }
+            // 目标是受保护目录本身，或是它的上级目录
+            if (c.equals(target) || c.startsWith(target.endsWith("/") ? target : target + "/")) {
+                return t("这是受保护的目录，不允许整体删除：") + displayPath(target);
+            }
+        }
+        return null;
+    }
+
+    /** 统计文件数和总大小（不跟随符号链接，最多统计 20 万个）。返回 {文件数, 字节数}。 */
+    public static long[] measure(File dir) {
+        long[] r = {0, 0};
+        List<File> stack = new ArrayList<>();
+        stack.add(dir);
+        while (!stack.isEmpty() && r[0] < 200_000) {
+            File f = stack.remove(stack.size() - 1);
+            if (isSymlink(f)) { r[0]++; continue; }
+            if (f.isDirectory()) {
+                File[] cs = f.listFiles();
+                if (cs != null) stack.addAll(Arrays.asList(cs));
+            } else {
+                r[0]++;
+                r[1] += f.length();
+            }
+        }
+        return r;
+    }
+
+    private static boolean isSymlink(File f) {
+        try {
+            File parent = f.getParentFile();
+            if (parent == null) return false;
+            File inCanonicalParent = new File(parent.getCanonicalFile(), f.getName());
+            return !inCanonicalParent.getCanonicalFile().equals(inCanonicalParent.getAbsoluteFile());
+        } catch (Exception e) {
+            return true; // 无法判断时按链接处理：只删链接本身，绝不进入
+        }
+    }
+
+    /** 递归删除；符号链接只删除链接本身，不进入其指向的目录。返回删除失败的数量。 */
+    private static int deleteTree(File f) {
+        int failed = 0;
+        if (!isSymlink(f) && f.isDirectory()) {
+            File[] cs = f.listFiles();
+            if (cs != null) for (File c : cs) failed += deleteTree(c);
+        }
+        if (!f.delete() && f.exists()) failed++;
+        return failed;
+    }
+
+    /**
+     * 彻底删除项目：从列表移除并删除整个文件夹（不可恢复），可选同时删除该项目的对话记录。
+     * 调用前必须先通过 {@link #deleteRefusal}。返回删除失败的文件数。
+     */
+    public static int deleteProject(Context context, Project p, boolean withSessions) {
+        if (deleteRefusal(p) != null) return -1;
+        remove(context, p);
+        int failed = deleteTree(new File(p.path));
+        if (withSessions) for (File d : sessionDirs(p.path)) failed += deleteTree(d);
+        return failed;
+    }
+
     /** 在 ~/projects 下新建项目目录。 */
     public static Project create(Context context, String name) {
         File dir = new File(PROJECTS_ROOT, name.trim().replaceAll("[/\\\\:*?\"<>|]", "_"));

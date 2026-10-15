@@ -245,6 +245,14 @@
                     android:contentDescription="@string/ccm_add_image"
                     android:src="@drawable/ccm_ic_add" />
 
+                <!-- 模式和模型标签放在可收缩的容器里：文字过长时截断，不会把发送按钮挤出屏幕 -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
                 <TextView
                     android:id="@+id/chip_mode"
                     android:layout_width="wrap_content"
@@ -252,7 +260,9 @@
                     android:layout_marginStart="2dp"
                     android:background="@drawable/ccm_bg_chip"
                     android:drawablePadding="2dp"
+                    android:ellipsize="end"
                     android:gravity="center"
+                    android:maxWidth="140dp"
                     android:paddingStart="10dp"
                     android:paddingEnd="8dp"
                     android:singleLine="true"
@@ -274,10 +284,7 @@
                     android:textColor="@color/ccm_text_secondary"
                     android:textSize="12sp" />
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/phone_pill"
