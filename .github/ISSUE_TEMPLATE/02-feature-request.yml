@@ -1,19 +1,17 @@
-name: "Feature request"
-description: "Suggest a new feature for Termux application"
+name: "Feature request / 功能建议"
+description: "Suggest a new feature for CCMobile / 为 CCMobile 提出新功能建议"
 title: "[Feature]: "
 labels: ["feature request"]
 body:
   - type: textarea
     attributes:
-      label: Feature description
-      description: Describe the feature and why you want it.
+      label: Feature description / 功能描述
+      description: Describe the feature and why you want it. / 描述你想要的功能及原因。
     validations:
       required: true
   - type: textarea
     attributes:
-      label: Additional information
+      label: Additional information / 补充信息
       description: |
-        Does another app/terminal emulator have this feature?
-        Provide links to more background information.
-    validations:
-      required: true
+        Does another app (e.g. Claude Code desktop) have this feature? Provide links to more background information.
+        其他应用（如 Claude Code 桌面端）是否有类似功能？可附上相关链接。
