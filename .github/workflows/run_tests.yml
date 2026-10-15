@@ -3,10 +3,12 @@ name: Unit tests
 on:
   push:
     branches:
+      - main
       - master
       - android-10
   pull_request:
     branches:
+      - main
       - master
       - android-10
 
