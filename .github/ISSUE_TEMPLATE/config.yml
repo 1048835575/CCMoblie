@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Want ask questions about the project?
-    url: https://github.com/termux/termux-app/discussions
-    about: Join GitHub Discussions
+  - name: Read the README / 查看使用说明
+    url: https://github.com/1048835575/CCMoblie#readme
+    about: Setup, login and FAQ / 安装、登录与常见问题
